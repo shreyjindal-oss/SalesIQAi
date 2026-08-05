@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tribunal Decants — Cases and Leads</title>
+<style>
+:root{--bg:#0f1420;--panel:#171e2e;--panel2:#1d2639;--panel3:#141b2b;--text:#e8ecf4;--mut:#93a0b8;
+--line:#2a3550;--acc:#4f8cff;--red:#ff5d73;--amber:#ffb454;--green:#3ecf8e;--vio:#b18cff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",system-ui,sans-serif;padding:24px}
+h1{font-size:20px;letter-spacing:.3px}
+.sub{color:var(--mut);font-size:12px;margin:4px 0 18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card .n{font-size:26px;font-weight:700}.card .l{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.8px}
+.card.red .n{color:var(--red)}.card.amber .n{color:var(--amber)}.card.green .n{color:var(--green)}.card.acc .n{color:var(--acc)}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px}
+input{flex:1;min-width:220px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{background:var(--panel2);color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:10px 12px}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+tr.row:hover{background:var(--panel2);cursor:pointer}
+tr.row.open-row{background:var(--panel2)}
+.chev{display:inline-block;width:14px;color:var(--mut);transition:transform .15s;margin-right:4px}
+tr.row.open-row .chev{transform:rotate(90deg);color:var(--acc)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-decant{background:#3a1220;color:var(--red);border:1px solid var(--red)}
+.b-accom{background:#332312;color:var(--amber);border:1px solid var(--amber)}
+.b-risk{background:#2a2440;color:var(--vio);border:1px solid var(--vio)}
+.b-none{background:#14231d;color:var(--green);border:1px solid #235c44}
+.b-unscanned{background:#222;color:var(--mut);border:1px solid var(--line)}
+.b-new{background:var(--acc);color:#fff;margin-left:6px}
+.b-doc{background:#3a2a10;color:var(--amber);border:1px solid var(--amber);margin-left:6px}
+.b-ut{background:#132a3a;color:#6cc7ff;border:1px solid #2f6d92;margin-left:6px}
+.b-ftt{background:#1c2233;color:var(--mut);border:1px solid var(--line);margin-left:6px}
+.prio-VeryHigh{color:var(--red);font-weight:700}.prio-High{color:var(--amber);font-weight:600}
+.prio-MediumHigh{color:#ffd98a}.prio-Medium{color:var(--mut)}.prio-Low,.prio-LowMedium{color:#5c6a85}.prio-Unrated{color:var(--acc)}
+.detail{display:none}
+.detail.open{display:table-row}
+.detail>td{padding:0;border-top:none;background:var(--panel3)}
+.dwrap{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(260px,1fr);gap:16px;padding:18px 20px 22px;border-top:2px solid var(--acc)}
+@media(max-width:900px){.dwrap{grid-template-columns:1fr}}
+.ev-group{margin-bottom:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ev-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--panel2);font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.ev-head .dot{width:9px;height:9px;border-radius:50%}
+.g-decant .dot{background:var(--red)}.g-accom .dot{background:var(--amber)}.g-risk .dot{background:var(--vio)}
+.g-decant .ev-head{color:var(--red)}.g-accom .ev-head{color:var(--amber)}.g-risk .ev-head{color:var(--vio)}
+.termchip{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.termchip span{background:var(--panel3);border:1px solid var(--line);border-radius:14px;padding:1px 9px;font-size:11px;font-weight:500;color:var(--mut);text-transform:none;letter-spacing:0}
+.quote{position:relative;margin:10px 12px;padding:10px 14px 10px 34px;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:#c8d2e4;font-size:13px;line-height:1.65}
+.quote::before{content:"\201C";position:absolute;left:11px;top:4px;font-size:24px;color:var(--acc);font-family:Georgia,serif}
+.quote .t{display:block;margin-top:6px;font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+mark{background:rgba(79,140,255,.25);color:#cfe0ff;border-radius:3px;padding:0 2px}
+.g-decant mark{background:rgba(255,93,115,.22);color:#ffc4cd}
+.g-accom mark{background:rgba(255,180,84,.2);color:#ffd9a3}
+.g-risk mark{background:rgba(177,140,255,.2);color:#dcc9ff}
+mark.d8{background:rgba(62,207,142,.2);color:#a9ecd0;font-weight:600}
+.clean{display:flex;align-items:center;gap:10px;padding:16px;border:1px dashed #235c44;border-radius:10px;color:var(--green);font-size:13px}
+.clean b{font-size:16px}
+.info{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;align-self:start}
+.info h3{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;font-size:12.5px}
+.kv .k{color:var(--mut)}
+.kv .v{color:var(--text);word-break:break-word}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.btn{display:inline-block;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid var(--line)}
+.btn.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+.btn.s{background:var(--panel2);color:var(--acc)}
+.btn:hover{filter:brightness(1.15)}
+.datebar{margin:0 0 12px;padding:10px 12px;background:#251d10;border:1px solid #5c4a23;border-radius:8px;font-size:12.5px;color:var(--amber)}
+.datebar b{margin-right:6px}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+.foot{color:var(--mut);font-size:11px;margin-top:16px}
+.dates{color:var(--amber);font-size:12px}
+.note{font-size:11.5px;color:var(--mut);margin:8px 12px 12px;line-height:1.5}
+.brand{font-size:13px;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.tabnav{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap}
+.tabnav button{background:none;border:none;color:var(--mut);font:600 14px/1 "Segoe UI",system-ui;padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabnav button:hover{color:var(--text)}
+.tabnav button.active{color:var(--acc);border-bottom-color:var(--acc)}
+.subnav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.subnav button{background:var(--panel2);border:1px solid var(--line);color:var(--mut);font:600 12px/1 "Segoe UI",system-ui;padding:8px 14px;border-radius:20px;cursor:pointer}
+.subnav button.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+.pane,.subpane{display:none}.pane.active,.subpane.active{display:block}
+.soon{border:1px dashed var(--line);border-radius:12px;padding:28px;color:var(--mut);text-align:center;line-height:1.7}
+.soon b{color:var(--text)}
+.fsev1{color:var(--red);font-weight:700}.fsev2{color:var(--amber);font-weight:600}.fsev3{color:#6cc7ff}
+.fcard{background:var(--panel);border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.fcard.s1{border-left-color:var(--red)}.fcard.s2{border-left-color:var(--amber)}.fcard.s3{border-left-color:#2b8ad6}
+.fcard h4{font-size:15px;margin-bottom:4px}.fcard .meta{color:var(--mut);font-size:12.5px;margin-bottom:8px}
+.fcard .msg{color:#c8d2e4;font-size:12.5px;background:var(--panel3);border-radius:8px;padding:8px 12px;line-height:1.55}
+.contacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:8px}
+.cbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.cbox h5{font-size:12px;color:var(--acc);margin-bottom:8px;line-height:1.4}
+.cbox .chip{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:2px 9px;margin:2px 3px 2px 0;font-size:11.5px;color:var(--text)}
+details.ev{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+details.ev>summary{cursor:pointer;color:var(--acc);font-size:12px;font-weight:600;list-style:none;user-select:none}
+details.ev>summary::-webkit-details-marker{display:none}
+details.ev>summary:before{content:"▸ Evidence & data"}
+details.ev[open]>summary:before{content:"▾ Evidence & data"}
+details.ev>summary{font-size:0}
+details.ev>summary:before{font-size:12px}
+details.ev .quote{color:#c8d2e4;font-size:12.5px;background:var(--panel3);border-radius:6px;padding:7px 11px;margin:7px 0;line-height:1.55;white-space:pre-wrap;border-left:2px solid var(--line)}
+.termrow{margin-top:6px}
+</style>
+</head>
+<body>
+<div class="brand">TheSqua.re · Sales Intelligence IQ</div>
+<nav class="tabnav">
+<button data-tab="top" class="active">⭐ Top signals</button>
+<button data-tab="emergency">🌊 Emergency / Housing Sales IQ</button>
+<button data-tab="corp">🏢 Corp Sales / TMC</button>
+</nav>
+
+<section class="pane active" data-pane="top">
+<h1>Top accommodation signals</h1>
+<div class="sub">Every accommodation-demand signal across all boards, ranked by confidence then contract value — the biggest opportunities first. Each item links back to its full evidence on its own board. <b>Est. scale is a rough estimate — verify before acting.</b></div>
+<div class="cards">
+<div class="card green"><div class="n" id="s-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="s-total">0</div><div class="l">Total signals</div></div>
+<div class="card red"><div class="n" id="s-explicit">0</div><div class="l">Explicit</div></div>
+<div class="card amber"><div class="n" id="s-mob">0</div><div class="l">Mobilisation</div></div>
+<div class="card"><div class="n" id="s-hint">0</div><div class="l">Hints</div></div>
+</div>
+<div class="filters"><input id="sq" placeholder="Search company, project, board…"><select id="s-level"><option value="">All confidence</option><option>EXPLICIT</option><option>MOBILISATION</option><option>HINT</option></select><select id="s-board"><option value="">All boards</option></select></div>
+<div id="top-list"></div>
+</section>
+
+<section class="pane" data-pane="emergency">
+<h1>Emergency / Housing Sales IQ</h1>
+<div class="sub">Real-time triggers for emergency &amp; displacement accommodation demand across the UK. Phase 1: England. Phase 2: EU / US.</div>
+<div class="subnav">
+<button data-sub="decant-housing" class="active">Decant housing</button>
+<button data-sub="floods">Floods</button>
+<button data-sub="tenders">Govt Housing Tenders</button>
+</div>
+
+<div class="subpane active" data-sub="decant-housing">
+<h2 style="font-size:18px;margin:6px 0 4px">Tribunal Decants — Cases and Leads</h2>
+<div class="sub">Source: <a href="__SOURCE__" target="_blank">GOV.UK Residential Property Tribunal decisions — Building Safety Act</a>
+ · Generated __GENERATED__ · All decant statuses are keyword-verified against official decision text; quotes shown verbatim. No inferred data.</div>
+
+<div class="cards">
+<div class="card green"><div class="n" id="c-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="c-total">0</div><div class="l">Total cases</div></div>
+<div class="card red"><div class="n" id="c-new">0</div><div class="l">New this run</div></div>
+<div class="card amber"><div class="n" id="c-upd">0</div><div class="l">Updated this run</div></div>
+<div class="card red"><div class="n" id="c-decant">0</div><div class="l">Decant referenced</div></div>
+<div class="card amber"><div class="n" id="c-accom">0</div><div class="l">Accommodation signal</div></div>
+<div class="card green"><div class="n" id="c-none">0</div><div class="l">No signal</div></div>
+</div>
+
+<div class="filters">
+<input id="q" placeholder="Search building, case ref, address…">
+<select id="f-status"><option value="">All decant statuses</option></select>
+<select id="f-source"><option value="">All sources</option></select>
+<select id="f-sub"><option value="">All sub-categories</option></select>
+<select id="f-prio"><option value="">All priorities</option></select>
+<select id="f-new"><option value="">New + existing</option><option value="new">New only</option><option value="changed">Changed this run</option></select>
+</div>
+
+<table id="tbl">
+<thead><tr>
+<th></th><th>Building / case</th><th>Sub-category</th>
+<th>Decided</th><th>Accommodation status</th>
+<th>Dates in evidence</th><th>Sales priority</th>
+</tr></thead>
+<tbody id="tb"></tbody>
+</table>
+<div class="foot">Priorities for baseline cases come from the TheSqua.re BSA decant report (10 Jul 2026); new cases appear as <b>Unrated</b> until reviewed.
+Click any row for verbatim evidence quotes, decision links and the source PDF. New cases and newly published decision documents are picked up by the daily crawl automatically.</div>
+</div>
+
+<div class="subpane" data-sub="floods">
+<div class="cards">
+<div class="card green"><div class="n" id="f-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="f-total">0</div><div class="l">Active flood zones</div></div>
+<div class="card red"><div class="n" id="f-severe">0</div><div class="l">Severe warnings</div></div>
+<div class="card amber"><div class="n" id="f-warn">0</div><div class="l">Flood warnings</div></div>
+<div class="card acc"><div class="n" id="f-alert">0</div><div class="l">Flood alerts</div></div>
+<div class="card red"><div class="n" id="f-new">0</div><div class="l">New this run</div></div>
+</div>
+<div class="sub">Source: <a href="https://check-for-flooding.service.gov.uk/" target="_blank">Environment Agency flood-monitoring API</a> (Open Government Licence). Severity, area and message are verbatim from the EA feed — no inferred data. Severe Flood Warning &gt; Flood Warning &gt; Flood Alert.</div>
+<div id="f-list"></div>
+<h3 style="margin:22px 0 8px;font-size:15px">Market playbook — who to contact</h3>
+<div class="sub" style="margin-top:0">General flood-displacement buyers &amp; supply chain. These are market contacts to verify before outreach, <b>not</b> claims about any specific flood above.</div>
+<div class="contacts" id="f-contacts"></div>
+</div>
+
+<div class="subpane" data-sub="tenders">
+<div class="cards">
+<div class="card green"><div class="n" id="t-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="t-total">0</div><div class="l">Accommodation notices</div></div>
+<div class="card amber"><div class="n" id="t-open">0</div><div class="l">Open tenders</div></div>
+<div class="card green"><div class="n" id="t-awarded">0</div><div class="l">Awarded (competitor intel)</div></div>
+<div class="card red"><div class="n" id="t-new">0</div><div class="l">New this run</div></div>
+</div>
+<div class="sub">Source: <a href="https://www.find-tender.service.gov.uk/" target="_blank">Find a Tender Service</a> OCDS API (Open Government Licence). Notices are filtered client-side to accommodation keywords / CPV codes — each lead shows the verbatim matched term(s). No inferred data.</div>
+<div class="filters">
+<input id="tq" placeholder="Search title, buyer, locality…">
+<select id="t-stage"><option value="">All stages</option><option>Open tender</option><option>Preliminary / market engagement</option><option>Awarded</option></select>
+</div>
+<div id="t-list"></div>
+</div>
+</section>
+
+<section class="pane" data-pane="corp">
+<h1>Corp Sales / TMC</h1>
+<div class="sub">Trigger-based corporate &amp; relocation intelligence, routed to the account owner.</div>
+<div class="subnav">
+<button data-sub="hq" class="active">London HQ moves</button>
+<button data-sub="ukmoves">UK ex-London moves</button>
+<button data-sub="infra">UK infrastructure wins</button>
+<button data-sub="prospects">Prospect triggers</button>
+</div>
+<div class="subpane active" data-sub="hq">
+<div class="cards">
+<div class="card green"><div class="n" id="hq-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="hq-proj">0</div><div class="l">London projects (verified)</div></div>
+<div class="card amber"><div class="n" id="hq-news">0</div><div class="l">News signals</div></div>
+<div class="card red"><div class="n" id="hq-new">0</div><div class="l">New this run</div></div>
+</div>
+<div class="sub">Companies with a London accommodation-demand signal — employees, relocations or project teams — <b>including companies not in your tracker</b>. Two streams: <b>verified</b> London public-contract awards (<a href="https://www.find-tender.service.gov.uk/" target="_blank">Find a Tender</a>, ≥ £1m, winner mobilises a team) and a <b>news-watch</b> of HQ moves / office openings (global news search — headlines are verbatim, source-linked signals to qualify, not confirmed demand).</div>
+<div class="filters"><input id="hqq" placeholder="Search company, project, publisher…"></div>
+<h3 style="margin:14px 0 8px;font-size:15px">🏗️ London public projects <span style="color:var(--mut);font-weight:400;font-size:12.5px">— verified, Find a Tender awards delivered in London</span></h3>
+<div id="hq-proj-list"></div>
+<h3 style="margin:22px 0 8px;font-size:15px">📰 News signals <span style="color:var(--mut);font-weight:400;font-size:12.5px">— HQ moves &amp; London office openings · qualify before outreach</span></h3>
+<div id="hq-news-list"></div>
+</div>
+<div class="subpane" data-sub="ukmoves">
+<div class="cards">
+<div class="card green"><div class="n" id="uk-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="uk-proj">0</div><div class="l">UK projects (verified)</div></div>
+<div class="card amber"><div class="n" id="uk-news">0</div><div class="l">News signals</div></div>
+<div class="card red"><div class="n" id="uk-new">0</div><div class="l">New this run</div></div>
+</div>
+<div class="sub">Same accommodation-demand signal as London HQ moves, but for the <b>rest of the UK (excluding London)</b> — employees, relocations or project teams, <b>including companies not in your tracker</b>. <b>Verified</b> non-London public-contract awards (<a href="https://www.find-tender.service.gov.uk/" target="_blank">Find a Tender</a>, ≥ £1m) plus a UK-wide <b>news-watch</b> of HQ moves / office openings (global news search, London filtered out — headlines are verbatim signals to qualify).</div>
+<div class="filters"><input id="ukq" placeholder="Search company, project, location, publisher…"></div>
+<h3 style="margin:14px 0 8px;font-size:15px">🏗️ UK public projects <span style="color:var(--mut);font-weight:400;font-size:12.5px">— verified, Find a Tender awards delivered outside London</span></h3>
+<div id="uk-proj-list"></div>
+<h3 style="margin:22px 0 8px;font-size:15px">📰 News signals <span style="color:var(--mut);font-weight:400;font-size:12.5px">— UK HQ moves &amp; office openings · qualify before outreach</span></h3>
+<div id="uk-news-list"></div>
+</div>
+<div class="subpane" data-sub="infra">
+<div class="cards">
+<div class="card green"><div class="n" id="i-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="i-total">0</div><div class="l">Large infra awards</div></div>
+<div class="card red"><div class="n" id="i-new">0</div><div class="l">New this run</div></div>
+</div>
+<div class="sub">Source: <a href="https://www.find-tender.service.gov.uk/" target="_blank">Find a Tender Service</a> award notices (OGL). Large construction / civil-engineering / rail contract awards (≥ £10m) — the winning contractor mobilises a workforce, a signal for corporate &amp; relocation accommodation. Buyer, winner and value are verbatim from FTS.</div>
+<div class="filters"><input id="iq" placeholder="Search project, buyer, contractor…"></div>
+<div id="i-list"></div>
+</div>
+<div class="subpane" data-sub="prospects">
+<div class="cards">
+<div class="card green"><div class="n" id="p-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="p-total">0</div><div class="l">Account matches</div></div>
+<div class="card red"><div class="n" id="p-new">0</div><div class="l">New this run</div></div>
+<div class="card"><div class="n" id="p-roster">0</div><div class="l">Accounts monitored</div></div>
+</div>
+<div class="sub">Your Salesforce roster cross-matched against <a href="https://www.find-tender.service.gov.uk/" target="_blank">Find a Tender</a> award winners. When one of your accounts wins a public contract, its team mobilises — a warm, verifiable reason to talk. Winner names are verbatim from FTS; account &amp; owner from your Salesforce report. <b>Nothing is inferred.</b></div>
+<div class="filters"><input id="pq" placeholder="Search account, owner, buyer, contract…"><select id="powner"><option value="">All owners</option></select></div>
+<div id="p-list"></div>
+</div>
+</section>
+
+<script>
+const DATA = __DATA__;
+const FLOODS = __FLOODS__;
+const TENDERS = __TENDERS__;
+const CORP_INFRA = __CORP_INFRA__;
+const PROSPECTS = __PROSPECTS__;
+const HQMOVES = __HQMOVES__;
+const UKMOVES = __UKMOVES__;
+const CHANGELOG = __CHANGELOG__;
+const S={D:"DECANT REFERENCED IN DECISION",A:"ACCOMMODATION SIGNAL IN DECISION",R:"OCCUPANCY-RISK SIGNAL",N:"NO DECANT SIGNAL FOUND",U:"DECISION TEXT NOT YET SCANNED"};
+const badge=s=>s===S.D?"b-decant":s===S.A?"b-accom":s===S.R?"b-risk":s===S.N?"b-none":"b-unscanned";
+const pcls=p=>"prio-"+(p||"Unrated").replace(/[^A-Za-z]/g,"");
+const cases=DATA.cases;
+const SRC_FTT="First-tier Tribunal (GOV.UK)", SRC_UT="Upper Tribunal (Lands Chamber)";
+const src=c=>c.source||SRC_FTT;
+const srcBadge=c=>src(c)===SRC_UT?'<span class="badge b-ut">UT APPEAL</span>':'';
+
+const GROUPS=[
+ {id:"g-decant",label:"Decant",terms:["decant"]},
+ {id:"g-accom",label:"Accommodation",terms:["temporary accommodation","alternative accommodation","emergency accommodation","rehousing","evacuation"]},
+ {id:"g-risk",label:"Occupancy risk",terms:["prohibition notice","vacate","waking watch","hotel","uninhabitable"]}
+];
+const HL=/(decant\w*|temporary\s+accommodation|alternative\s+accommodation|emergency\s+accommodation|re-?hous\w+|evacuat\w+|prohibition\s+notice|vacat\w+|waking\s+watch|hotels?\b|uninhabitable)/gi;
+const HLDATE=/(\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2}\b|£\s?[\d,]+(?:\.\d{2})?)/g;
+
+const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function hl(t){return esc(t).replace(HL,'<mark>$1</mark>').replace(HLDATE,'<mark class="d8">$1</mark>');}
+
+function counts(){
+  try{const g=new Date(DATA.generated_at);
+    document.getElementById("c-last").innerHTML=g.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+"<br>"+g.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  }catch(e){document.getElementById("c-last").textContent=DATA.generated_at||"—";}
+  document.getElementById("c-total").textContent=cases.length;
+  document.getElementById("c-new").textContent=(DATA.new_in_this_run||[]).filter(x=>!String(x).startsWith("baseline")).length;
+  document.getElementById("c-upd").textContent=(DATA.updated_in_this_run||[]).length;
+  document.getElementById("c-decant").textContent=cases.filter(c=>c.decant.status===S.D).length;
+  document.getElementById("c-accom").textContent=cases.filter(c=>c.decant.status===S.A).length;
+  document.getElementById("c-none").textContent=cases.filter(c=>c.decant.status===S.N).length;
+}
+function opts(id,vals){const el=document.getElementById(id);[...new Set(vals)].sort().forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;el.appendChild(o)})}
+opts("f-status",cases.map(c=>c.decant.status));
+opts("f-sub",cases.map(c=>c.sub_category));
+opts("f-prio",cases.map(c=>c.priority.value));
+opts("f-source",cases.map(src));
+
+function evidenceHTML(c){
+  const ev=c.decant.evidence||{};
+  let html="";
+  const dates=c.decant.dates_in_evidence||[];
+  if(dates.length) html+=`<div class="datebar"><b>Dates appearing in the evidence:</b> ${dates.map(esc).join(" · ")} <span style="color:var(--mut)">(verbatim from decision text — check the quotes below for context)</span></div>`;
+  GROUPS.forEach(g=>{
+    const present=g.terms.filter(t=>ev[t]&&ev[t].length);
+    if(!present.length) return;
+    const chips=present.map(t=>`<span>${esc(t)} × ${ev[t].length}</span>`).join("");
+    let quotes="";
+    present.forEach(t=>{ev[t].forEach(s=>{
+      quotes+=`<div class="quote">${hl(s)}<span class="t">matched term: ${esc(t)}</span></div>`;
+    })});
+    html+=`<div class="ev-group ${g.id}"><div class="ev-head"><span class="dot"></span>${g.label} evidence<span class="termchip">${chips}</span></div>${quotes}
+<div class="note">Quotes are verbatim extracts from the official decision text. Terms like “vacate” can be procedural (e.g. a <i>hearing</i> was vacated) — read the context before acting.</div></div>`;
+  });
+  if(!html) html=`<div class="clean"><b>✓</b> Decision text scanned — no decant, accommodation or occupancy-risk keywords found. This is a verified result, not missing data.</div>`;
+  return html;
+}
+
+function infoHTML(c){
+  const att=(c.attachments||[]).map((u,j)=>`<a class="btn s" href="${u}" target="_blank">📄 Decision PDF${c.attachments.length>1?" "+(j+1):""}</a>`).join("");
+  const changed=(c.changed_fields||[]).length?`<div class="kv"><div class="k">Changed</div><div class="v">${c.changed_fields.map(esc).join(", ")}</div></div>`:"";
+  const isUT=src(c)===SRC_UT;
+  const addr=c.address_hint?`<div class="k">Address</div><div class="v">${esc(c.address_hint)}</div>`:"";
+  return `<div class="info"><h3>Case information</h3>
+  <div class="kv">
+   <div class="k">Source</div><div class="v">${esc(src(c))}</div>
+   <div class="k">${isUT?"Neutral citation":"Case ref"}</div><div class="v">${(c.case_refs||[]).map(esc).join("<br>")||"see source page"}</div>
+   <div class="k">Sub-category</div><div class="v">${esc(c.sub_category||"—")}</div>
+   ${addr}
+   <div class="k">${isUT?"Handed down":"Decided"}</div><div class="v">${esc(c.decision_date||"—")}</div>
+   <div class="k">${isUT?"Published":"GOV.UK listed"}</div><div class="v">${esc((c.public_timestamp||"—").slice(0,10))}</div>
+   <div class="k">First seen</div><div class="v">${esc((c.first_seen||"—").slice(0,10))}</div>
+   <div class="k">Priority</div><div class="v ${pcls(c.priority.value)}">${esc(c.priority.value)}</div>
+   <div class="k">Priority source</div><div class="v">${esc(c.priority.source)}</div>
+  </div>${changed}
+  <div class="btns"><a class="btn p" href="${c.url}" target="_blank">${isUT?"View judgment ↗":"View on GOV.UK ↗"}</a>${isUT?"":att}</div></div>`;
+}
+
+function render(){
+  const q=document.getElementById("q").value.toLowerCase();
+  const fs=document.getElementById("f-status").value, fb=document.getElementById("f-sub").value,
+        fp=document.getElementById("f-prio").value, fn=document.getElementById("f-new").value,
+        fsrc=document.getElementById("f-source").value;
+  const tb=document.getElementById("tb"); tb.innerHTML="";
+  cases.filter(c=>{
+    if(q && !(c.title+" "+(c.case_refs||[]).join(" ")+" "+(c.address_hint||"")).toLowerCase().includes(q)) return false;
+    if(fs && c.decant.status!==fs) return false;
+    if(fsrc && src(c)!==fsrc) return false;
+    if(fb && c.sub_category!==fb) return false;
+    if(fp && c.priority.value!==fp) return false;
+    if(fn==="new" && !c.is_new) return false;
+    if(fn==="changed" && !(c.changed_fields||[]).length) return false;
+    return true;
+  }).forEach(c=>{
+    const tr=document.createElement("tr"); tr.className="row";
+    const isNew=c.is_new&&(DATA.new_in_this_run||[]).includes(c.slug);
+    const hasNewDoc=(c.changed_fields||[]).includes("new_document");
+    tr.innerHTML=`<td><span class="chev">▶</span></td><td><b>${esc(c.title)}</b>${srcBadge(c)}${isNew?'<span class="badge b-new">NEW</span>':''}${hasNewDoc?'<span class="badge b-doc">NEW DOCUMENT</span>':''}</td>
+<td>${esc(c.sub_category||"—")}</td><td>${esc(c.decision_date||"—")}</td>
+<td><span class="badge ${badge(c.decant.status)}">${c.decant.status}</span></td>
+<td class="dates">${(c.decant.dates_in_evidence||[]).slice(0,3).map(esc).join("<br>")||"Not stated"}</td>
+<td class="${pcls(c.priority.value)}">${esc(c.priority.value)}</td>`;
+    const dt=document.createElement("tr"); dt.className="detail";
+    dt.innerHTML=`<td colspan="7"><div class="dwrap"><div>${evidenceHTML(c)}</div>${infoHTML(c)}</div></td>`;
+    tr.onclick=()=>{dt.classList.toggle("open");tr.classList.toggle("open-row");};
+    tb.appendChild(tr); tb.appendChild(dt);
+  });
+}
+["q","f-status","f-source","f-sub","f-prio","f-new"].forEach(id=>document.getElementById(id).addEventListener("input",render));
+counts(); render();
+
+// ---- tabs + sub-tabs ----
+function activate(nodes, key, attr){nodes.forEach(n=>n.classList.toggle("active", n.getAttribute(attr)===key));}
+document.querySelectorAll(".tabnav button").forEach(b=>b.addEventListener("click",()=>{
+  const t=b.dataset.tab;
+  document.querySelectorAll(".tabnav button").forEach(x=>x.classList.toggle("active",x===b));
+  document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("active",p.dataset.pane===t));
+  if(t==="emergency") location.hash="";
+}));
+document.querySelectorAll(".pane").forEach(pane=>{
+  const subBtns=pane.querySelectorAll(".subnav button");
+  subBtns.forEach(b=>b.addEventListener("click",()=>{
+    const s=b.dataset.sub;
+    subBtns.forEach(x=>x.classList.toggle("active",x===b));
+    pane.querySelectorAll(".subpane").forEach(sp=>sp.classList.toggle("active",sp.dataset.sub===s));
+  }));
+});
+// deep-links from the email, e.g. #floods, #tenders, #hq, #prospects, #infra
+(function(){
+  const h=(location.hash||"").replace("#","");
+  const map={
+    "decant-housing":["emergency","decant-housing"], floods:["emergency","floods"], tenders:["emergency","tenders"],
+    hq:["corp","hq"], ukmoves:["corp","ukmoves"], infra:["corp","infra"], prospects:["corp","prospects"]
+  };
+  if(!map[h]) return;
+  const [tab,sub]=map[h];
+  const tb=document.querySelector('.tabnav button[data-tab="'+tab+'"]'); if(tb) tb.click();
+  const sb=document.querySelector('.pane[data-pane="'+tab+'"] .subnav button[data-sub="'+sub+'"]'); if(sb) sb.click();
+})();
+
+// ===== Accommodation-signal layer (shown on every board) =====
+// Each board keeps ONLY leads with an accommodation angle and shows why + the
+// verbatim data behind it. Levels: EXPLICIT (source text names accommodation),
+// MOBILISATION (a contract/award means a team deploys), HINT (news suggests it).
+const ACCOM_RE=/(temporary accommodation|alternative accommodation|emergency accommodation|serviced apartments?|worker accommodation|workforce accommodation|decant\w*|re-?housing|relocation|relocating|displaced|displacement|evacuat\w+|hotels?|hostels?|lodging|accommodation|housing)/gi;
+const NEWS_RE=/(office|headquarters|\bhq\b|relocat|expansion|expand|\bopens?\b|opening|new site|premises|campus|\bjobs\b|hires|hiring|invest|move to|moving to|lease|warehouse|distribution centre|new factory)/i;
+function accomHits(t){const m=String(t||"").match(ACCOM_RE)||[];return [...new Set(m.map(s=>s.toLowerCase().replace(/\s+/g," ")))];}
+function money(a,c){return a==null?"":(c==="GBP"?"£":"")+Number(a).toLocaleString();}
+function lvBadge(l){const c=l==="EXPLICIT"?"b-decant":l==="MOBILISATION"?"b-accom":"b-risk";return '<span class="badge '+c+'">'+l+'</span>';}
+// Rough accommodation-scale estimate (explicitly an estimate — verify before acting).
+function sizeEstimate(o){
+  o=o||{};
+  if(o.severity!=null) return o.severity===1?"danger to life — potential mass displacement (est. dozens–hundreds of households)":o.severity===2?"flooding expected — est. tens of households may need rehousing":"flooding possible — early watch, scale unclear";
+  if(o.news) return "news lead — scale unknown until qualified";
+  const v=o.value;
+  if(v==null) return "scale not stated — verify in source";
+  if(v<1e6) return "smaller contract — est. a handful of staff on site";
+  if(v<1e7) return "small project team — est. ~5–25 people on site";
+  if(v<5e7) return "mid-size project — est. ~25–100 people on site";
+  if(v<2.5e8) return "large project — est. ~100–400 people on site";
+  return "major project — est. 400+ people on site";
+}
+// shared expandable "accommodation angle + evidence" card
+function acard(o){
+  return `<div class="fcard ${o.cls||'s2'}"><h4>${esc(o.title)} ${lvBadge(o.level)}${o.isNew?' <span class="badge b-new">NEW</span>':''}${o.badges||""}</h4>
+   <div class="meta">${o.meta||""}</div>
+   <div class="msg"><b>Accommodation angle:</b> ${esc(o.why)}${o.size?`<br><span style="color:var(--mut)"><b>Est. scale (rough):</b> ${esc(o.size)}</span>`:""}</div>
+   <details class="ev"><summary></summary>
+    ${(o.evidence||[]).filter(Boolean).map(e=>`<div class="quote">${esc(e)}</div>`).join("")}
+    ${(o.terms&&o.terms.length)?`<div class="termrow">${o.terms.map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div>`:""}
+   </details>
+   <div class="btns"><a class="btn p" href="${esc(o.url)}" target="_blank">${o.urlLabel||"View source ↗"}</a>${o.extra||""}</div></div>`;
+}
+
+// ---- floods render ----
+function floodsRender(){
+  const f=FLOODS;
+  if(!f||!f.leads){document.getElementById("f-list").innerHTML='<div class="soon">No flood data yet — the daily crawl will populate this.</div>';return;}
+  const g=f.generated_at?new Date(f.generated_at):null;
+  document.getElementById("f-last").innerHTML=g?g.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+"<br>"+g.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—";
+  document.getElementById("f-total").textContent=f.count||0;
+  document.getElementById("f-severe").textContent=f.severe||0;
+  document.getElementById("f-warn").textContent=f.warnings||0;
+  document.getElementById("f-alert").textContent=f.alerts||0;
+  document.getElementById("f-new").textContent=(f.new||[]).length;
+  const list=document.getElementById("f-list");
+  if(!f.leads.length){list.innerHTML='<div class="soon"><b>No active flood warnings in England right now.</b><br>Flood activity is seasonal — this board updates automatically when the Environment Agency issues warnings.</div>';}
+  else{
+    list.innerHTML=f.leads.map(l=>{
+      const sev=l.severity_level||3, loc=l.county||l.region||"the affected area";
+      const level=sev===3?"HINT":"MOBILISATION";
+      const why="Active "+(l.severity||"flood alert")+" for "+l.area+" ("+loc+"). Homes at risk may be evacuated — an immediate window for emergency / temporary accommodation. "+(sev===1?"Severe: danger to life, evacuation likely.":sev===2?"Flooding expected — displacement likely.":"Flooding possible — early watch.");
+      const ev=[l.message, (l.severity||"")+" · "+(l.area||"")+(l.river?" · "+l.river:"")+(l.tidal?" · tidal":"")+" · updated "+((l.updated||"").slice(0,16).replace("T"," "))];
+      return acard({cls:"s"+sev, title:l.area, level, isNew:(f.new||[]).includes(l.id),
+        meta:`<span class="fsev${sev}">${esc(l.severity)}</span> · ${esc(loc)}`,
+        why, size:sizeEstimate({severity:sev}), evidence:ev, terms:accomHits(l.message),
+        url:"https://check-for-flooding.service.gov.uk/", urlLabel:"Check for flooding ↗"});
+    }).join("");
+  }
+  const cbox=document.getElementById("f-contacts");
+  const cts=f.contacts||{};
+  cbox.innerHTML=Object.keys(cts).map(k=>`<div class="cbox"><h5>${esc(k)}</h5>${cts[k].map(n=>`<span class="chip">${esc(n)}</span>`).join("")}</div>`).join("");
+}
+floodsRender();
+
+// ---- tenders render ----
+function tendersRender(){
+  const t=TENDERS;
+  const list=document.getElementById("t-list");
+  if(!t||!t.leads){list.innerHTML='<div class="soon">No tender data yet — the daily crawl will populate this.</div>';return;}
+  const g=t.generated_at?new Date(t.generated_at):null;
+  document.getElementById("t-last").innerHTML=g?g.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+"<br>"+g.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—";
+  document.getElementById("t-total").textContent=t.count||0;
+  document.getElementById("t-open").textContent=t.open||0;
+  document.getElementById("t-awarded").textContent=t.awarded||0;
+  document.getElementById("t-new").textContent=(t.new||[]).length;
+  function draw(){
+    const q=document.getElementById("tq").value.toLowerCase();
+    const st=document.getElementById("t-stage").value;
+    const rows=t.leads.filter(l=>{
+      if(q && !((l.title+" "+l.buyer+" "+(l.locality||"")).toLowerCase().includes(q))) return false;
+      if(st && l.stage!==st) return false;
+      return true;
+    });
+    if(!rows.length){list.innerHTML='<div class="soon"><b>No accommodation-related tenders in the current window.</b><br>The crawl scans the most recent Find a Tender notices each day and keeps any that match accommodation keywords / CPV codes.</div>';return;}
+    list.innerHTML=rows.map(l=>{
+      const kws=(l.matched&&l.matched.keywords)||[];
+      const why="A public body is procuring accommodation-related services or works — a direct requirement TheSqua.re can bid to serve"+(kws.length?" (matched: "+kws.join(", ")+")":"")+".";
+      const val=l.value_amount!=null?" · "+money(l.value_amount,l.value_currency):"";
+      const ev=[l.description,
+        (l.stage||"")+" · "+(l.buyer||"")+(l.locality?" · "+l.locality:"")+val+(l.deadline?" · closes "+l.deadline.slice(0,10):"")+(l.supplier?" · won by "+l.supplier:"")];
+      if(l.matched&&l.matched.cpv&&l.matched.cpv.length) ev.push("CPV: "+l.matched.cpv.join("; "));
+      return acard({cls:"s3", title:l.title, level:"EXPLICIT", isNew:(t.new||[]).includes(l.id),
+        meta:`<span class="fsev2">${esc(l.stage||"—")}</span> · <b>${esc(l.buyer||"—")}</b>${l.locality?" · "+esc(l.locality):""}${esc(val)}`,
+        why, size:sizeEstimate({value:l.value_amount}), evidence:ev, terms:kws, url:l.url, urlLabel:"View notice ↗",
+        extra:l.buyer_email?`<a class="btn s" href="mailto:${esc(l.buyer_email)}">✉ ${esc(l.buyer_email)}</a>`:""});
+    }).join("");
+  }
+  ["tq","t-stage"].forEach(id=>document.getElementById(id).addEventListener("input",draw));
+  draw();
+}
+tendersRender();
+
+// ---- corp: infrastructure wins render ----
+function infraRender(){
+  const f=CORP_INFRA;
+  const list=document.getElementById("i-list");
+  if(!list) return;
+  if(!f||!f.leads){list.innerHTML='<div class="soon">No data yet — the daily crawl will populate this.</div>';return;}
+  const g=f.generated_at?new Date(f.generated_at):null;
+  document.getElementById("i-last").innerHTML=g?g.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+"<br>"+g.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—";
+  document.getElementById("i-total").textContent=f.count||0;
+  document.getElementById("i-new").textContent=(f.new||[]).length;
+  function draw(){
+    const q=document.getElementById("iq").value.toLowerCase();
+    const rows=f.leads.filter(l=>!q||((l.title+" "+l.buyer+" "+(l.suppliers||[]).join(" ")).toLowerCase().includes(q)));
+    if(!rows.length){list.innerHTML='<div class="soon"><b>No large infrastructure awards in the current window.</b><br>The crawl keeps construction / civil-engineering / rail awards ≥ £10m from the most recent Find a Tender notices.</div>';return;}
+    list.innerHTML=rows.map(l=>{
+      const sup=(l.suppliers||[]).join(", ")||"—";
+      const hits=accomHits(l.title+" "+(l.cpv||[]).join(" "));
+      const level=hits.length?"EXPLICIT":"MOBILISATION";
+      const why=level==="EXPLICIT"
+        ? "This award explicitly involves accommodation / housing works — a direct opportunity (matched: "+hits.join(", ")+")."
+        : money(l.value_amount,l.value_currency)+" "+(l.category||"works")+" contract won by "+sup+". A large project team mobilises"+(l.locality?" in "+l.locality:"")+" for the build — a window for contractor & relocation accommodation near site.";
+      const ev=[l.title, money(l.value_amount,l.value_currency)+" · "+(l.category||"")+" · awarded "+((l.date||"").slice(0,10)),
+        "Buyer: "+(l.buyer||"—")+(l.locality?" ("+l.locality+")":""), "Won by: "+sup];
+      if((l.cpv||[]).length) ev.push("CPV: "+l.cpv.join("; "));
+      return acard({cls:"s2", title:l.title, level, isNew:(f.new||[]).includes(l.id),
+        meta:`<b>${esc(money(l.value_amount,l.value_currency))}</b> · ${esc(l.buyer||"—")} · awarded ${esc((l.date||"").slice(0,10))}`,
+        why, size:sizeEstimate({value:l.value_amount}), evidence:ev, terms:hits, url:l.url, urlLabel:"View award ↗"});
+    }).join("");
+  }
+  document.getElementById("iq").addEventListener("input",draw);
+  draw();
+}
+infraRender();
+
+// ---- corp: prospect triggers render ----
+function prospectRender(){
+  const f=PROSPECTS;
+  const list=document.getElementById("p-list");
+  if(!list) return;
+  if(!f){list.innerHTML='<div class="soon"><b>Roster not loaded yet.</b><br>Upload your Salesforce account report, then the daily crawl will surface any account that wins a public contract.</div>';return;}
+  const g=f.generated_at?new Date(f.generated_at):null;
+  document.getElementById("p-last").innerHTML=g?g.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+"<br>"+g.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—";
+  document.getElementById("p-total").textContent=f.count||0;
+  document.getElementById("p-new").textContent=(f.new||[]).length;
+  document.getElementById("p-roster").textContent=(f.roster_size||0).toLocaleString();
+  const owners=[...new Set((f.leads||[]).map(l=>l.owner))].sort();
+  const sel=document.getElementById("powner");
+  owners.forEach(o=>{const opt=document.createElement("option");opt.value=o;opt.textContent=o;sel.appendChild(opt);});
+  function draw(){
+    const q=document.getElementById("pq").value.toLowerCase();
+    const ow=sel.value;
+    const rows=(f.leads||[]).filter(l=>(!ow||l.owner===ow)&&(!q||((l.account+" "+l.owner+" "+l.buyer+" "+l.contract_title+" "+l.matched_supplier).toLowerCase().includes(q))));
+    if(!rows.length){list.innerHTML='<div class="soon"><b>No account matches in the current award window.</b><br>The crawl checks the most recent Find a Tender award notices against your '+((f.roster_size||0).toLocaleString())+' accounts. Matches appear here the day an account wins.</div>';return;}
+    list.innerHTML=rows.map(l=>{
+      const val=l.value_amount!=null?" · "+money(l.value_amount,l.value_currency):"";
+      const why=l.account+" won \""+l.contract_title+"\" ("+(l.buyer||"")+"). Their team mobilises to deliver it — a warm, verifiable accommodation conversation for account owner "+l.owner+".";
+      const ev=[l.contract_title, "Buyer: "+(l.buyer||"—")+val+" · awarded "+((l.date||"").slice(0,10)),
+        "FTS winner (verbatim): "+l.matched_supplier, "Route to: "+l.owner+(l.domain?" · "+l.domain:"")];
+      const nameBadge=l.match_type==="partial"?' <span class="badge b-risk" title="Name match — verify same legal entity">NAME MATCH</span>':'';
+      return acard({cls:"s2", title:l.account, badges:nameBadge, level:"MOBILISATION", isNew:(f.new||[]).includes(l.id),
+        meta:`won <b>${esc(l.contract_title)}</b>`,
+        why, size:sizeEstimate({value:l.value_amount}), evidence:ev, terms:accomHits(l.contract_title), url:l.url, urlLabel:"View award ↗"});
+    }).join("");
+  }
+  document.getElementById("pq").addEventListener("input",draw);
+  sel.addEventListener("change",draw);
+  draw();
+}
+prospectRender();
+
+// ---- corp: London / UK moves render (verified projects + news signals) ----
+function renderMoves(f, p){
+  const pl=document.getElementById(p+"-proj-list"), nl=document.getElementById(p+"-news-list");
+  if(!pl||!nl) return;
+  const g=f&&f.generated_at?new Date(f.generated_at):null;
+  document.getElementById(p+"-last").innerHTML=g?g.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+"<br>"+g.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—";
+  const region=p==="uk"?"on site":"in London";
+  const projects=(f&&f.projects)||[];
+  // news: keep only accommodation-adjacent headlines (drops general-news noise)
+  const news=((f&&f.news)||[]).filter(x=>NEWS_RE.test(x.title||"")||accomHits(x.title).length);
+  document.getElementById(p+"-proj").textContent=projects.length;
+  document.getElementById(p+"-news").textContent=news.length;
+  document.getElementById(p+"-new").textContent=projects.filter(x=>x.is_new).length+news.filter(x=>x.is_new).length;
+  const q0=document.getElementById(p+"q");
+  function draw(){
+    const q=q0.value.toLowerCase();
+    const pr=projects.filter(x=>!q||((x.title+" "+x.buyer+" "+(x.locality||"")+" "+(x.suppliers||[]).join(" ")).toLowerCase().includes(q)));
+    pl.innerHTML=pr.length?pr.map(x=>{
+      const sup=(x.suppliers||[]).join(", ")||"—";
+      const hits=accomHits(x.title+" "+(x.cpv||[]).join(" "));
+      const level=hits.length?"EXPLICIT":"MOBILISATION";
+      const locPart=(x.locality&&!new RegExp("\\b"+x.locality.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i").test(region))?" ("+x.locality+")":"";
+      const why=level==="EXPLICIT"
+        ? "This award explicitly involves accommodation / housing works — a direct opportunity (matched: "+hits.join(", ")+")."
+        : money(x.value_amount,x.value_currency)+" contract won by "+sup+". A project team mobilises "+region+locPart+" — a window for contractor & relocation accommodation.";
+      const ev=[x.title, money(x.value_amount,x.value_currency)+" · awarded "+((x.date||"").slice(0,10)),
+        "Buyer: "+(x.buyer||"—")+(x.locality?" ("+x.locality+")":""), "Won by: "+sup];
+      return acard({cls:"s2", title:x.title, level, isNew:x.is_new,
+        meta:`<b>${esc(money(x.value_amount,x.value_currency))}</b> · ${esc(x.buyer||"—")} · awarded ${esc((x.date||"").slice(0,10))}`,
+        why, size:sizeEstimate({value:x.value_amount}), evidence:ev, terms:hits, url:x.url, urlLabel:"View award ↗"});
+    }).join(""):'<div class="soon">No public-project awards (≥ £1m) with an accommodation angle in the current window.</div>';
+    const nw=news.filter(x=>!q||((x.title+" "+(x.publisher||"")).toLowerCase().includes(q)));
+    nl.innerHTML=nw.length?nw.map(x=>{
+      const why="News signal — possible office move / expansion / relocation. Watch for corporate accommodation demand; qualify before outreach.";
+      const ev=[(x.publisher||"news")+(x.pubDate?" · "+x.pubDate.slice(0,10):"")];
+      return acard({cls:"s3", title:x.title, level:"HINT", isNew:x.is_new,
+        meta:`${esc(x.publisher||"news")}${x.pubDate?" · "+esc(x.pubDate.slice(0,10)):""}`,
+        why, size:sizeEstimate({news:true}), evidence:ev, terms:accomHits(x.title), url:x.link, urlLabel:"Read article ↗"});
+    }).join(""):'<div class="soon">No accommodation-relevant news signals in the current window.</div>';
+  }
+  q0.addEventListener("input",draw);
+  draw();
+}
+renderMoves(HQMOVES,"hq");
+renderMoves(UKMOVES,"uk");
+
+// ---- Top signals: aggregate every accommodation signal across all boards ----
+function collectSignals(){
+  const out=[];
+  (cases||[]).forEach(c=>{const st=c.decant&&c.decant.status; if(st!==S.D&&st!==S.A) return;
+    out.push({board:"Decant housing", title:c.title, level:"EXPLICIT",
+      why:"Tribunal decision references "+(st===S.D?"a decant":"alternative / temporary accommodation")+" — occupants displaced or to be rehoused.",
+      size:sizeEstimate({}), value:null, meta:esc((c.sub_category||"case")+" · decided "+(c.decision_date||"—")),
+      evidence:[(c.decant.dates_in_evidence||[]).length?"Dates in evidence: "+c.decant.dates_in_evidence.join(" · "):""], terms:["decant"], url:c.url, urlLabel:"View on GOV.UK ↗"});});
+  ((FLOODS&&FLOODS.leads)||[]).forEach(l=>{const sev=l.severity_level||3;
+    out.push({board:"Floods", title:l.area, level:sev===3?"HINT":"MOBILISATION",
+      why:"Active "+(l.severity||"flood alert")+" — homes at risk may be evacuated; emergency accommodation window.",
+      size:sizeEstimate({severity:sev}), value:null, meta:esc((l.severity||"")+" · "+(l.county||l.region||"")),
+      evidence:[l.message], terms:accomHits(l.message), url:"https://check-for-flooding.service.gov.uk/", urlLabel:"Check for flooding ↗"});});
+  ((TENDERS&&TENDERS.leads)||[]).forEach(l=>{const kws=(l.matched&&l.matched.keywords)||[];
+    out.push({board:"Govt tenders", title:l.title, level:"EXPLICIT",
+      why:"Public body is procuring accommodation-related services / works"+(kws.length?" (matched: "+kws.join(", ")+")":"")+".",
+      size:sizeEstimate({value:l.value_amount}), value:l.value_amount, meta:esc((l.stage||"")+" · "+(l.buyer||"")),
+      evidence:[l.description], terms:kws, url:l.url, urlLabel:"View notice ↗"});});
+  ((CORP_INFRA&&CORP_INFRA.leads)||[]).forEach(l=>{const hits=accomHits(l.title+" "+(l.cpv||[]).join(" "));const sup=(l.suppliers||[]).join(", ")||"—";
+    out.push({board:"UK infra wins", title:l.title, level:hits.length?"EXPLICIT":"MOBILISATION",
+      why:money(l.value_amount,l.value_currency)+" works award won by "+sup+" — a project team mobilises for the build.",
+      size:sizeEstimate({value:l.value_amount}), value:l.value_amount, meta:esc(money(l.value_amount,l.value_currency)+" · "+(l.buyer||"")),
+      evidence:["Won by: "+sup], terms:hits, url:l.url, urlLabel:"View award ↗"});});
+  [["London projects",HQMOVES],["UK projects",UKMOVES]].forEach(function(t){var bn=t[0],src=t[1];((src&&src.projects)||[]).forEach(function(x){var hits=accomHits(x.title+" "+(x.cpv||[]).join(" "));var sup=(x.suppliers||[]).join(", ")||"—";
+    out.push({board:bn, title:x.title, level:hits.length?"EXPLICIT":"MOBILISATION",
+      why:money(x.value_amount,x.value_currency)+" contract won by "+sup+" — a project team mobilises.",
+      size:sizeEstimate({value:x.value_amount}), value:x.value_amount, meta:esc(money(x.value_amount,x.value_currency)+" · "+(x.buyer||"")),
+      evidence:["Won by: "+sup], terms:hits, url:x.url, urlLabel:"View award ↗"});});});
+  ((PROSPECTS&&PROSPECTS.leads)||[]).forEach(l=>out.push({board:"Prospect triggers", title:l.account+" — "+l.contract_title, level:"MOBILISATION",
+      why:l.account+" won a public contract — their team mobilises; a warm accommodation conversation for "+l.owner+".",
+      size:sizeEstimate({value:l.value_amount}), value:l.value_amount, meta:esc("owner "+l.owner),
+      evidence:["FTS winner: "+l.matched_supplier], terms:accomHits(l.contract_title), url:l.url, urlLabel:"View award ↗"}));
+  [["London news",HQMOVES],["UK news",UKMOVES]].forEach(function(t){var bn=t[0],src=t[1];(((src&&src.news)||[]).filter(function(x){return NEWS_RE.test(x.title||"")||accomHits(x.title).length;})).forEach(function(x){
+    out.push({board:bn, title:x.title, level:"HINT", why:"News signal — possible office move / expansion / relocation. Qualify before outreach.",
+      size:sizeEstimate({news:true}), value:null, meta:esc((x.publisher||"news")+(x.pubDate?" · "+x.pubDate.slice(0,10):"")),
+      evidence:[], terms:accomHits(x.title), url:x.link, urlLabel:"Read article ↗"});});});
+  return out;
+}
+function topSignalsRender(){
+  const list=document.getElementById("top-list"); if(!list) return;
+  const rank={EXPLICIT:0,MOBILISATION:1,HINT:2};
+  const sigs=collectSignals().sort((a,b)=>(rank[a.level]-rank[b.level])||((b.value||0)-(a.value||0)));
+  try{const g=new Date(DATA.generated_at);document.getElementById("s-last").innerHTML=g.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+"<br>"+g.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});}catch(e){}
+  document.getElementById("s-total").textContent=sigs.length;
+  document.getElementById("s-explicit").textContent=sigs.filter(s=>s.level==="EXPLICIT").length;
+  document.getElementById("s-mob").textContent=sigs.filter(s=>s.level==="MOBILISATION").length;
+  document.getElementById("s-hint").textContent=sigs.filter(s=>s.level==="HINT").length;
+  const bsel=document.getElementById("s-board");
+  [...new Set(sigs.map(s=>s.board))].sort().forEach(b=>{const o=document.createElement("option");o.value=b;o.textContent=b;bsel.appendChild(o);});
+  const lsel=document.getElementById("s-level"), q0=document.getElementById("sq");
+  function draw(){
+    const q=q0.value.toLowerCase(), lv=lsel.value, bd=bsel.value;
+    const rows=sigs.filter(s=>(!lv||s.level===lv)&&(!bd||s.board===bd)&&(!q||((s.title+" "+s.board).toLowerCase().includes(q)))).slice(0,80);
+    if(!rows.length){list.innerHTML='<div class="soon">No accommodation signals match.</div>';return;}
+    list.innerHTML=rows.map(s=>acard({cls:s.level==="EXPLICIT"?"s1":s.level==="MOBILISATION"?"s2":"s3", title:s.title,
+      badges:' <span class="badge" style="background:var(--panel2);border:1px solid var(--line);color:var(--mut)">'+esc(s.board)+'</span>',
+      level:s.level, why:s.why, size:s.size, meta:s.meta||"", evidence:s.evidence||[], terms:s.terms||[], url:s.url, urlLabel:s.urlLabel})).join("");
+  }
+  q0.addEventListener("input",draw); lsel.addEventListener("change",draw); bsel.addEventListener("change",draw);
+  draw();
+}
+topSignalsRender();
+</script>
+</body>
+</html>

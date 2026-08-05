@@ -1,0 +1,56 @@
+# Cloud Build CI/CD: test → build image → push → deploy to Cloud Run.
+# Trigger from GitHub (Cloud Build GitHub App) on push to main, or run manually:
+#   gcloud builds submit --config cloudbuild.yaml \
+#       --substitutions _REGION=europe-west2,_SERVICE=sales-intelligence-iq
+substitutions:
+  _SERVICE: sales-intelligence-iq
+  _REGION: europe-west2
+  _REPO: cloud-run          # Artifact Registry repo (create once)
+
+steps:
+  # 1. Offline logic checks (no GCP needed).
+  - name: python:3.12-slim
+    id: test
+    entrypoint: bash
+    args:
+      - -c
+      - pip install --no-cache-dir -r requirements.txt && python test_local.py
+
+  # 2. Build the container.
+  - name: gcr.io/cloud-builders/docker
+    id: build
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+      - .
+
+  # 3. Push the image.
+  - name: gcr.io/cloud-builders/docker
+    id: push
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}
+
+  # 4. Deploy to Cloud Run (env vars / secrets set on the service persist).
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: deploy
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --quiet
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

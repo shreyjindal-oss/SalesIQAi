@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.git/
+.gitignore
+*.md
+.DS_Store
+key.json
+service-account*.json
