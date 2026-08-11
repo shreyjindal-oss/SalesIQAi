@@ -102,5 +102,31 @@ check(c["decant"]["status"] == crawler.STATUS["DECANT"], "decant status from ver
 check(c["sub_category"] == "Remediation contribution order", "sub-category mapped")
 check(c["priority"]["value"] == "Very High", "Brayford priority from baseline report")
 
+print("Lead allocation")
+_mem.clear()
+import allocations  # noqa: E402
+# stub the salespersons API fetch (no network in tests)
+allocations.fetch_salespersons = lambda: (_store.put_json(
+    "salespersons", {"people": [{"name": "Asha Rao", "email": "asha@thesqua.re"}]}) or
+    [{"name": "Asha Rao", "email": "asha@thesqua.re"}])
+_store.put_json("tenders", {"leads": [{"id": "t1", "title": "Temp accommodation", "value_amount": 100}]})
+rec = allocations.allocate("tenders", "t1", "Temp accommodation", "Asha Rao", "asha@thesqua.re")
+check(rec["email"] == "asha@thesqua.re" and rec["signature"], "allocation stored with a signature")
+check(allocations.public_map()["tenders::t1"]["name"] == "Asha Rao", "public_map exposes assignee")
+
+_sent = []
+_em = types.ModuleType("emailer")
+_em.send_lead_update = lambda email, name, board, lead: (_sent.append((email, board, lead.get("id"))) or "sent")
+sys.modules["emailer"] = _em
+check(allocations.notify_updates()["notified"] == 0, "no notify when lead unchanged")
+_store.put_json("tenders", {"leads": [{"id": "t1", "title": "Temp accommodation", "value_amount": 250}]})
+r = allocations.notify_updates()
+check(r["notified"] == 1 and _sent and _sent[-1][0] == "asha@thesqua.re", "assignee notified on lead change")
+check(allocations.notify_updates()["notified"] == 0, "signature updated → no repeat notify")
+allocations.unallocate("tenders", "t1")
+check("tenders::t1" not in allocations.get_allocations(), "unallocate removes the record")
+check(allocations._signature({"id": "x", "is_new": True}) == allocations._signature({"id": "x", "is_new": False}),
+      "signature ignores volatile is_new flag")
+
 print(("\nALL PASSED" if not fails else "\n%d FAILURE(S)" % fails))
 sys.exit(1 if fails else 0)

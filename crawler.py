@@ -914,8 +914,17 @@ def crawl(full=False):
         email_result = emailer.send_digest(data, alerts, floods, tenders,
                                             {"hq": hq, "uk": ukm})
 
+    # Refresh the active salespersons list and notify assignees of changed leads.
+    try:
+        import allocations
+        allocations.get_salespersons(refresh=True)
+        alloc_result = {} if is_baseline else allocations.notify_updates()
+    except Exception as e:  # noqa: BLE001
+        alloc_result = {"error": str(e)}
+
     return {
         "run": run_ts, "total": len(cases), "ut_fetched": ut["fetched"],
+        "allocations": alloc_result,
         "ut_error": ut.get("error"),
         "floods_count": floods.get("count", 0), "floods_new": len(floods.get("new", [])),
         "floods_error": floods.get("error"),

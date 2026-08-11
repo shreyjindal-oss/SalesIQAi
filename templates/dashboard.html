@@ -275,6 +275,51 @@ const PROSPECTS = __PROSPECTS__;
 const HQMOVES = __HQMOVES__;
 const UKMOVES = __UKMOVES__;
 const CHANGELOG = __CHANGELOG__;
+const SALESPEOPLE = (typeof __SALESPEOPLE__!=="undefined"&&__SALESPEOPLE__)||[];
+let ALLOCATIONS = (typeof __ALLOCATIONS__!=="undefined"&&__ALLOCATIONS__)||{};
+
+// ---- lead allocation (assign a lead to a salesperson; they get update emails) ----
+function akey(board,id){return board+"::"+String(id);}
+function assignInner(board,id,title){
+  const cur=ALLOCATIONS[akey(board,id)];
+  if(cur){
+    return `Assigned: <b>${esc(cur.name||cur.email)}</b> `+
+      `<button class="btn s unassign" style="padding:2px 8px" data-board="${esc(board)}" data-id="${esc(String(id))}">unassign</button>`;
+  }
+  if(!SALESPEOPLE.length) return `<span style="color:var(--mut);font-size:12px">Assign list unavailable</span>`;
+  const opts=SALESPEOPLE.map(p=>`<option value="${esc(p.email)}" data-name="${esc(p.name)}">${esc(p.name)}</option>`).join("");
+  return `<select class="asel" style="max-width:180px;padding:3px"><option value="">Assign to…</option>${opts}</select>`+
+    ` <button class="btn s abtn" style="padding:2px 8px" data-board="${esc(board)}" data-id="${esc(String(id))}" data-title="${esc((title||'').slice(0,140))}">Assign</button>`;
+}
+function assignBox(board,id,title){
+  if(!board||id==null||id==="") return "";
+  return `<span class="assign-slot" data-akey="${esc(akey(board,id))}" style="display:inline-flex;align-items:center;gap:5px;margin-left:6px">${assignInner(board,id,title)}</span>`;
+}
+function refreshAssign(board,id,title){
+  const k=akey(board,id);
+  document.querySelectorAll(".assign-slot").forEach(sl=>{if(sl.dataset.akey===k) sl.innerHTML=assignInner(board,id,title);});
+}
+async function doAlloc(action,body){
+  const url=action==="allocate"?"/api/allocate":"/api/unallocate";
+  try{
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){alert((j&&j.error)||"Request failed");return;}
+    const k=akey(body.board,body.lead_id);
+    if(action==="allocate") ALLOCATIONS[k]={name:body.name,email:body.email};
+    else delete ALLOCATIONS[k];
+    refreshAssign(body.board,body.lead_id,body.title);
+  }catch(e){alert("Network error: "+e);}
+}
+document.addEventListener("click",e=>{
+  const ab=e.target.closest(".abtn");
+  if(ab){const slot=ab.closest(".assign-slot"),sel=slot&&slot.querySelector(".asel");
+    if(!sel||!sel.value){alert("Pick a person first");return;}
+    const name=sel.options[sel.selectedIndex].getAttribute("data-name")||"";
+    doAlloc("allocate",{board:ab.dataset.board,lead_id:ab.dataset.id,title:ab.dataset.title||"",email:sel.value,name});return;}
+  const ub=e.target.closest(".unassign");
+  if(ub){doAlloc("unallocate",{board:ub.dataset.board,lead_id:ub.dataset.id});}
+});
 const S={D:"DECANT REFERENCED IN DECISION",A:"ACCOMMODATION SIGNAL IN DECISION",R:"OCCUPANCY-RISK SIGNAL",N:"NO DECANT SIGNAL FOUND",U:"DECISION TEXT NOT YET SCANNED"};
 const badge=s=>s===S.D?"b-decant":s===S.A?"b-accom":s===S.R?"b-risk":s===S.N?"b-none":"b-unscanned";
 const pcls=p=>"prio-"+(p||"Unrated").replace(/[^A-Za-z]/g,"");
@@ -348,7 +393,7 @@ function infoHTML(c){
    <div class="k">Priority</div><div class="v ${pcls(c.priority.value)}">${esc(c.priority.value)}</div>
    <div class="k">Priority source</div><div class="v">${esc(c.priority.source)}</div>
   </div>${changed}
-  <div class="btns"><a class="btn p" href="${c.url}" target="_blank">${isUT?"View judgment ↗":"View on GOV.UK ↗"}</a>${isUT?"":att}</div></div>`;
+  <div class="btns"><a class="btn p" href="${c.url}" target="_blank">${isUT?"View judgment ↗":"View on GOV.UK ↗"}</a>${isUT?"":att}${assignBox("decant",c.slug,c.title)}</div></div>`;
 }
 
 function render(){
@@ -444,7 +489,7 @@ function acard(o){
     ${(o.evidence||[]).filter(Boolean).map(e=>`<div class="quote">${esc(e)}</div>`).join("")}
     ${(o.terms&&o.terms.length)?`<div class="termrow">${o.terms.map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div>`:""}
    </details>
-   <div class="btns"><a class="btn p" href="${esc(o.url)}" target="_blank">${o.urlLabel||"View source ↗"}</a>${o.extra||""}</div></div>`;
+   <div class="btns"><a class="btn p" href="${esc(o.url)}" target="_blank">${o.urlLabel||"View source ↗"}</a>${o.extra||""}${assignBox(o.board,o.lead_id,o.title)}</div></div>`;
 }
 
 // ---- floods render ----
@@ -467,6 +512,7 @@ function floodsRender(){
       const why="Active "+(l.severity||"flood alert")+" for "+l.area+" ("+loc+"). Homes at risk may be evacuated — an immediate window for emergency / temporary accommodation. "+(sev===1?"Severe: danger to life, evacuation likely.":sev===2?"Flooding expected — displacement likely.":"Flooding possible — early watch.");
       const ev=[l.message, (l.severity||"")+" · "+(l.area||"")+(l.river?" · "+l.river:"")+(l.tidal?" · tidal":"")+" · updated "+((l.updated||"").slice(0,16).replace("T"," "))];
       return acard({cls:"s"+sev, title:l.area, level, isNew:(f.new||[]).includes(l.id),
+        board:"floods", lead_id:l.id,
         meta:`<span class="fsev${sev}">${esc(l.severity)}</span> · ${esc(loc)}`,
         why, size:sizeEstimate({severity:sev}), evidence:ev, terms:accomHits(l.message),
         url:"https://check-for-flooding.service.gov.uk/", urlLabel:"Check for flooding ↗"});
@@ -506,6 +552,7 @@ function tendersRender(){
         (l.stage||"")+" · "+(l.buyer||"")+(l.locality?" · "+l.locality:"")+val+(l.deadline?" · closes "+l.deadline.slice(0,10):"")+(l.supplier?" · won by "+l.supplier:"")];
       if(l.matched&&l.matched.cpv&&l.matched.cpv.length) ev.push("CPV: "+l.matched.cpv.join("; "));
       return acard({cls:"s3", title:l.title, level:"EXPLICIT", isNew:(t.new||[]).includes(l.id),
+        board:"tenders", lead_id:l.id,
         meta:`<span class="fsev2">${esc(l.stage||"—")}</span> · <b>${esc(l.buyer||"—")}</b>${l.locality?" · "+esc(l.locality):""}${esc(val)}`,
         why, size:sizeEstimate({value:l.value_amount}), evidence:ev, terms:kws, url:l.url, urlLabel:"View notice ↗",
         extra:l.buyer_email?`<a class="btn s" href="mailto:${esc(l.buyer_email)}">✉ ${esc(l.buyer_email)}</a>`:""});
@@ -541,6 +588,7 @@ function infraRender(){
         "Buyer: "+(l.buyer||"—")+(l.locality?" ("+l.locality+")":""), "Won by: "+sup];
       if((l.cpv||[]).length) ev.push("CPV: "+l.cpv.join("; "));
       return acard({cls:"s2", title:l.title, level, isNew:(f.new||[]).includes(l.id),
+        board:"infra", lead_id:l.id,
         meta:`<b>${esc(money(l.value_amount,l.value_currency))}</b> · ${esc(l.buyer||"—")} · awarded ${esc((l.date||"").slice(0,10))}`,
         why, size:sizeEstimate({value:l.value_amount}), evidence:ev, terms:hits, url:l.url, urlLabel:"View award ↗"});
     }).join("");
@@ -576,6 +624,7 @@ function prospectRender(){
         "FTS winner (verbatim): "+l.matched_supplier, "Route to: "+l.owner+(l.domain?" · "+l.domain:"")];
       const nameBadge=l.match_type==="partial"?' <span class="badge b-risk" title="Name match — verify same legal entity">NAME MATCH</span>':'';
       return acard({cls:"s2", title:l.account, badges:nameBadge, level:"MOBILISATION", isNew:(f.new||[]).includes(l.id),
+        board:"prospects", lead_id:l.id,
         meta:`won <b>${esc(l.contract_title)}</b>`,
         why, size:sizeEstimate({value:l.value_amount}), evidence:ev, terms:accomHits(l.contract_title), url:l.url, urlLabel:"View award ↗"});
     }).join("");
@@ -614,6 +663,7 @@ function renderMoves(f, p){
       const ev=[x.title, money(x.value_amount,x.value_currency)+" · awarded "+((x.date||"").slice(0,10)),
         "Buyer: "+(x.buyer||"—")+(x.locality?" ("+x.locality+")":""), "Won by: "+sup];
       return acard({cls:"s2", title:x.title, level, isNew:x.is_new,
+        board:p, lead_id:x.id,
         meta:`<b>${esc(money(x.value_amount,x.value_currency))}</b> · ${esc(x.buyer||"—")} · awarded ${esc((x.date||"").slice(0,10))}`,
         why, size:sizeEstimate({value:x.value_amount}), evidence:ev, terms:hits, url:x.url, urlLabel:"View award ↗"});
     }).join(""):'<div class="soon">No public-project awards (≥ £1m) with an accommodation angle in the current window.</div>';

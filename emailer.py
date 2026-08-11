@@ -118,6 +118,66 @@ def build_html(data, alerts, floods, tenders, corp):
     return head + body + tail
 
 
+_BOARD_LABELS = {
+    "decant": "Decant housing", "floods": "Floods", "tenders": "Govt housing tenders",
+    "infra": "UK infrastructure win", "prospects": "Prospect trigger",
+    "hq": "London move", "uk": "UK ex-London move",
+}
+
+
+def _lead_title(board, lead):
+    if board == "decant":
+        return lead.get("title") or lead.get("case") or lead.get("slug") or "case"
+    if board == "floods":
+        return lead.get("area") or "flood area"
+    if board == "prospects":
+        return (lead.get("account") or "") + " — " + (lead.get("contract_title") or lead.get("title") or "")
+    return lead.get("title") or lead.get("account") or "lead"
+
+
+def _lead_url(board, lead):
+    return (lead.get("url") or lead.get("link")
+            or (CONFIG["DASHBOARD_URL"] or "") or "https://check-for-flooding.service.gov.uk/")
+
+
+def build_update_html(name, board, lead):
+    label = _BOARD_LABELS.get(board, board)
+    title = _lead_title(board, lead)
+    url = _lead_url(board, lead)
+    changed = lead.get("changed_fields") or []
+    changed_html = ("<p style=\"color:#555;font-size:13px\">Changed: %s</p>"
+                    % _esc(", ".join(changed)) if changed else "")
+    dash = ('<p><a href="%s" style="color:#2757c4">Open the dashboard →</a></p>' % CONFIG["DASHBOARD_URL"]
+            if CONFIG["DASHBOARD_URL"] else "")
+    return ('<div style="font-family:Segoe UI,Arial,sans-serif;max-width:720px;margin:auto;color:#1c2333">'
+            '<h2 style="margin-bottom:2px">🔔 Update on a lead assigned to you</h2>'
+            '<p style="color:#667;margin-top:2px">Hi %s, a lead you own has new data.</p>'
+            '<div style="border-left:3px solid #e08a1e;padding:8px 12px;margin:8px 0;background:#fff7ec">'
+            '<span style="color:#888;font-size:12px">%s</span><br><b>%s</b><br>%s'
+            '<a href="%s" style="color:#2757c4;font-size:13px">view lead →</a></div>%s</div>'
+            % (_esc(name or "there"), _esc(label), _esc(title[:140]), changed_html, url, dash))
+
+
+def send_lead_update(email, name, board, lead):
+    """Email the assignee that their allocated lead changed. Returns a status string."""
+    if not CONFIG["SENDGRID_API_KEY"] or not email:
+        return "skipped: no SendGrid key / recipient"
+    subject = "Sales IQ: update on your lead — %s" % _lead_title(board, lead)[:80]
+    payload = {
+        "personalizations": [{"to": [{"email": email.strip()}]}],
+        "from": {"email": CONFIG["EMAIL_FROM"]},
+        "subject": subject,
+        "content": [{"type": "text/html", "value": build_update_html(name, board, lead)}],
+    }
+    try:
+        res = requests.post(SEND_URL, json=payload, timeout=30,
+                            headers={"Authorization": "Bearer " + CONFIG["SENDGRID_API_KEY"],
+                                     "Content-Type": "application/json"})
+        return "sent" if res.status_code in (200, 201, 202) else "failed HTTP %s: %s" % (res.status_code, res.text[:200])
+    except Exception as e:
+        return "failed: " + str(e)
+
+
 def send_digest(data, alerts, floods, tenders, corp):
     if not CONFIG["SENDGRID_API_KEY"] or not CONFIG["EMAIL_TO"]:
         return "skipped: no SendGrid key / recipient"

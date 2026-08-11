@@ -123,5 +123,19 @@ accepts Cloud Scheduler's `X-CloudScheduler` header.
 |-------|-------------|
 | `GET /` | dashboard |
 | `GET /api/<board>.json` | `cases`, `floods`, `tenders`, `corp_infra`, `prospects`, `hq`, `ukmoves`, `roster`, `changelog` |
+| `GET /api/salespersons.json` | active salespersons for lead assignment (`?refresh=1` re-pulls from the enquiry app) |
+| `GET /api/allocations.json` | current lead → assignee map |
+| `POST /api/allocate` | assign a lead (`{board, lead_id, title, name, email}`) |
+| `POST /api/unallocate` | remove an assignment (`{board, lead_id}`) |
 | `POST /tasks/crawl` | run the crawl (Scheduler target; token- or OIDC-secured) |
 | `GET /healthz` | liveness |
+
+## Lead allocation
+
+Every lead card has an **Assign** control. Active salespersons come from the admin
+enquiry app (`/admin/api_get_active_salespersons`, name → email), cached in Datastore
+and refreshed on each crawl. When a lead is assigned, the crawl stores a content
+signature for it; on any later crawl where that lead's data changes, the assignee
+gets an **update email** (SendGrid). Assignments live in the `allocations` Datastore
+document. The allocate/unallocate endpoints are unauthenticated by default — front
+the service with IAP or add your own auth if the dashboard is publicly reachable.

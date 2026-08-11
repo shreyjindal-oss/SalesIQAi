@@ -17,6 +17,7 @@ from flask import Flask, Response, abort, jsonify, request
 
 import store
 import crawler
+import allocations
 from config import CONFIG
 
 app = Flask(__name__)
@@ -60,6 +61,9 @@ def dashboard():
             html = html.replace(placeholder, json.dumps(doc, ensure_ascii=False) if doc else "null")
         log = store.get_json("changelog", []) or []
         html = html.replace("__CHANGELOG__", json.dumps(log[-30:], ensure_ascii=False))
+        people = (store.get_json("salespersons") or {}).get("people", [])
+        html = html.replace("__SALESPEOPLE__", json.dumps(people, ensure_ascii=False))
+        html = html.replace("__ALLOCATIONS__", json.dumps(allocations.public_map(), ensure_ascii=False))
     return Response(html, mimetype="text/html")
 
 
@@ -73,6 +77,47 @@ def api(name):
         doc = store.get_json(name)
     return Response(json.dumps(doc if doc is not None else {}, ensure_ascii=False),
                     mimetype="application/json")
+
+
+@app.get("/api/salespersons.json")
+def api_salespersons():
+    refresh = request.args.get("refresh") == "1"
+    with store.context():
+        people = allocations.get_salespersons(refresh=refresh)
+    return jsonify({"people": people})
+
+
+@app.get("/api/allocations.json")
+def api_allocations():
+    with store.context():
+        return jsonify(allocations.public_map())
+
+
+@app.post("/api/allocate")
+def api_allocate():
+    b = request.get_json(silent=True) or request.form
+    board, lead_id = b.get("board"), b.get("lead_id")
+    name, email = b.get("name"), b.get("email")
+    title = b.get("title", "")
+    if not (board and lead_id and email):
+        return jsonify({"error": "board, lead_id and email are required"}), 400
+    try:
+        with store.context():
+            rec = allocations.allocate(board, lead_id, title, name, email)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True, "allocation": rec})
+
+
+@app.post("/api/unallocate")
+def api_unallocate():
+    b = request.get_json(silent=True) or request.form
+    board, lead_id = b.get("board"), b.get("lead_id")
+    if not (board and lead_id):
+        return jsonify({"error": "board and lead_id are required"}), 400
+    with store.context():
+        allocations.unallocate(board, lead_id)
+    return jsonify({"ok": True})
 
 
 @app.route("/tasks/crawl", methods=["POST", "GET"])
