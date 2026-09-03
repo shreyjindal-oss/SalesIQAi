@@ -63,7 +63,8 @@ def dashboard():
         html = html.replace("__CHANGELOG__", json.dumps(log[-30:], ensure_ascii=False))
         people = (store.get_json("salespersons") or {}).get("people", [])
         html = html.replace("__SALESPEOPLE__", json.dumps(people, ensure_ascii=False))
-        html = html.replace("__ALLOCATIONS__", json.dumps(allocations.public_map(), ensure_ascii=False))
+        html = html.replace("__TRACKING__", json.dumps(allocations.public_tracking(), ensure_ascii=False))
+        html = html.replace("__STAGES__", json.dumps(allocations.STAGES, ensure_ascii=False))
     return Response(html, mimetype="text/html")
 
 
@@ -93,20 +94,26 @@ def api_allocations():
         return jsonify(allocations.public_map())
 
 
+@app.get("/api/pipeline.json")
+def api_pipeline():
+    with store.context():
+        return jsonify({"tracking": allocations.public_tracking(), "stages": allocations.STAGES})
+
+
 @app.post("/api/allocate")
 def api_allocate():
     b = request.get_json(silent=True) or request.form
     board, lead_id = b.get("board"), b.get("lead_id")
     name, email = b.get("name"), b.get("email")
-    title = b.get("title", "")
+    title, by = b.get("title", ""), b.get("by", "")
     if not (board and lead_id and email):
         return jsonify({"error": "board, lead_id and email are required"}), 400
     try:
         with store.context():
-            rec = allocations.allocate(board, lead_id, title, name, email)
+            rec = allocations.allocate(board, lead_id, title, name, email, by)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-    return jsonify({"ok": True, "allocation": rec})
+    return jsonify({"ok": True, "record": rec})
 
 
 @app.post("/api/unallocate")
@@ -118,6 +125,36 @@ def api_unallocate():
     with store.context():
         allocations.unallocate(board, lead_id)
     return jsonify({"ok": True})
+
+
+@app.post("/api/stage")
+def api_stage():
+    b = request.get_json(silent=True) or request.form
+    board, lead_id, stage = b.get("board"), b.get("lead_id"), b.get("stage")
+    title, by = b.get("title", ""), b.get("by", "")
+    if not (board and lead_id and stage):
+        return jsonify({"error": "board, lead_id and stage are required"}), 400
+    try:
+        with store.context():
+            rec = allocations.set_stage(board, lead_id, title, stage, by)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True, "record": rec})
+
+
+@app.post("/api/comment")
+def api_comment():
+    b = request.get_json(silent=True) or request.form
+    board, lead_id, text = b.get("board"), b.get("lead_id"), b.get("text")
+    title, by = b.get("title", ""), b.get("by", "")
+    if not (board and lead_id and (text or "").strip()):
+        return jsonify({"error": "board, lead_id and text are required"}), 400
+    try:
+        with store.context():
+            entry = allocations.add_comment(board, lead_id, title, text, by)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True, "comment": entry})
 
 
 @app.route("/tasks/crawl", methods=["POST", "GET"])

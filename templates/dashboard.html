@@ -104,12 +104,56 @@ details.ev>summary{font-size:0}
 details.ev>summary:before{font-size:12px}
 details.ev .quote{color:#c8d2e4;font-size:12.5px;background:var(--panel3);border-radius:6px;padding:7px 11px;margin:7px 0;line-height:1.55;white-space:pre-wrap;border-left:2px solid var(--line)}
 .termrow{margin-top:6px}
+/* ---- identity bar ---- */
+.mebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:12.5px;color:var(--mut)}
+.mebar select{padding:6px 9px;min-width:180px;flex:0 0 auto}
+.mebar b{color:var(--text)}
+/* ---- lead workflow tools on cards ---- */
+.leadtools{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.lt-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.lt-row .lab{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.stage-sel{padding:5px 8px;font-size:12px}
+.assign-slot{display:inline-flex;align-items:center;gap:5px}
+.asel{max-width:170px;padding:5px 8px;font-size:12px}
+.stg{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--line)}
+.stg-New{background:#1c2233;color:var(--mut)}
+.stg-Assigned{background:#132a3a;color:#6cc7ff;border-color:#2f6d92}
+.stg-Qualified{background:#2a2440;color:var(--vio);border-color:var(--vio)}
+.stg-Contacted{background:#252d1a;color:#b9d86a;border-color:#4f6b2a}
+.stg-Proposal{background:#332312;color:var(--amber);border-color:var(--amber)}
+.stg-Negotiation{background:#3a2a10;color:#ffcf7a;border-color:#8a6a24}
+.stg-Won{background:#14231d;color:var(--green);border-color:#235c44}
+.stg-Lost{background:#3a1220;color:var(--red);border-color:var(--red)}
+.stg-Onhold{background:#222;color:var(--mut);border-color:var(--line)}
+.cmt-toggle{cursor:pointer;background:var(--panel2);border:1px solid var(--line);color:var(--acc);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600}
+.chatter{margin-top:10px;background:var(--panel3);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.chatter.hidden{display:none}
+.cmt{border-left:2px solid var(--acc);padding:4px 0 4px 10px;margin:6px 0;font-size:12.5px;color:#c8d2e4;white-space:pre-wrap}
+.cmt .who{color:var(--mut);font-size:11px;margin-bottom:2px}
+.cmt .who b{color:var(--text)}
+.cmt-empty{color:var(--mut);font-size:12px;margin:2px 0 8px}
+.cmt-add{display:flex;gap:8px;margin-top:8px}
+.cmt-add textarea{flex:1;min-height:38px;resize:vertical;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:13px/1.4 "Segoe UI",system-ui}
+/* ---- pipeline table ---- */
+.pipe-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.pipe-tags .tg{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:4px 11px;font-size:12px;color:var(--mut)}
+.pipe-tags .tg b{color:var(--text);margin-left:4px}
+tr.prow:hover{background:var(--panel2);cursor:pointer}
+tr.prow.open-row{background:var(--panel2)}
+tr.pdetail{display:none}tr.pdetail.open{display:table-row}
+tr.pdetail>td{background:var(--panel3);border-top:none}
 </style>
 </head>
 <body>
 <div class="brand">TheSqua.re · Sales Intelligence IQ</div>
+<div class="mebar">
+ <span>You are:</span>
+ <select id="me-sel"><option value="">— select yourself —</option></select>
+ <span id="me-status">Set who you are to assign leads, change stages and post comments.</span>
+</div>
 <nav class="tabnav">
 <button data-tab="top" class="active">⭐ Top signals</button>
+<button data-tab="pipeline">📋 Pipeline</button>
 <button data-tab="emergency">🌊 Emergency / Housing Sales IQ</button>
 <button data-tab="corp">🏢 Corp Sales / TMC</button>
 </nav>
@@ -126,6 +170,33 @@ details.ev .quote{color:#c8d2e4;font-size:12.5px;background:var(--panel3);border
 </div>
 <div class="filters"><input id="sq" placeholder="Search company, project, board…"><select id="s-level"><option value="">All confidence</option><option>EXPLICIT</option><option>MOBILISATION</option><option>HINT</option></select><select id="s-board"><option value="">All boards</option></select></div>
 <div id="top-list"></div>
+</section>
+
+<section class="pane" data-pane="pipeline">
+<h1>Lead pipeline</h1>
+<div class="sub">Every accommodation lead across all boards, who owns it, what stage it's at, and the latest activity. Assign, move stages and post time-stamped notes here or on any lead card. <b>Set "You are" above first.</b></div>
+<div class="cards">
+<div class="card acc"><div class="n" id="pl-total">0</div><div class="l">Total leads</div></div>
+<div class="card green"><div class="n" id="pl-assigned">0</div><div class="l">Assigned</div></div>
+<div class="card amber"><div class="n" id="pl-unassigned">0</div><div class="l">Unassigned</div></div>
+<div class="card green"><div class="n" id="pl-won">0</div><div class="l">Won</div></div>
+<div class="card red"><div class="n" id="pl-active">0</div><div class="l">Active (working)</div></div>
+</div>
+<div class="pipe-tags" id="pl-stagetags"></div>
+<div class="filters">
+<input id="plq" placeholder="Search company, project, owner…">
+<select id="pl-fstage"><option value="">All stages</option></select>
+<select id="pl-fowner"><option value="">All owners</option></select>
+<select id="pl-fboard"><option value="">All boards</option></select>
+<select id="pl-fassign"><option value="">Assigned + unassigned</option><option value="assigned">Assigned only</option><option value="unassigned">Unassigned only</option></select>
+</div>
+<table id="pl-tbl">
+<thead><tr>
+<th></th><th>Lead</th><th>Board</th><th>Owner</th><th>Stage</th><th>Last update</th><th>Notes</th>
+</tr></thead>
+<tbody id="pl-tb"></tbody>
+</table>
+<div class="foot">Leads are enumerated live from the current crawl data. "Last update" is the most recent of assignment, stage change or comment. Click a row to open its chatter feed and workflow controls.</div>
 </section>
 
 <section class="pane" data-pane="emergency">
@@ -276,49 +347,91 @@ const HQMOVES = __HQMOVES__;
 const UKMOVES = __UKMOVES__;
 const CHANGELOG = __CHANGELOG__;
 const SALESPEOPLE = (typeof __SALESPEOPLE__!=="undefined"&&__SALESPEOPLE__)||[];
-let ALLOCATIONS = (typeof __ALLOCATIONS__!=="undefined"&&__ALLOCATIONS__)||{};
+let TRACKING = (typeof __TRACKING__!=="undefined"&&__TRACKING__)||{};
+const STAGES = (typeof __STAGES__!=="undefined"&&__STAGES__)||["New","Assigned","Qualified","Contacted","Proposal","Negotiation","Won","Lost","On hold"];
 
-// ---- lead allocation (assign a lead to a salesperson; they get update emails) ----
+// ===== Lead workflow: assign · stage · time-stamped comments (chatter) =====
 function akey(board,id){return board+"::"+String(id);}
-function assignInner(board,id,title){
-  const cur=ALLOCATIONS[akey(board,id)];
-  if(cur){
-    return `Assigned: <b>${esc(cur.name||cur.email)}</b> `+
-      `<button class="btn s unassign" style="padding:2px 8px" data-board="${esc(board)}" data-id="${esc(String(id))}">unassign</button>`;
-  }
-  if(!SALESPEOPLE.length) return `<span style="color:var(--mut);font-size:12px">Assign list unavailable</span>`;
+function stgCls(s){return "stg-"+String(s||"New").replace(/[^A-Za-z]/g,"");}
+function fmtTs(ts){try{const d=new Date(ts);return d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});}catch(e){return ts||"";}}
+// --- browser-remembered identity (no login on this dashboard) ---
+function getMe(){try{return JSON.parse(localStorage.getItem("siq_me")||"null");}catch(e){return null;}}
+function setMe(o){try{o?localStorage.setItem("siq_me",JSON.stringify(o)):localStorage.removeItem("siq_me");}catch(e){}}
+function requireMe(){const me=getMe();if(!me||!me.name){alert("Select who you are (top of the page) before assigning, changing a stage or posting a note.");const s=document.getElementById("me-sel");if(s)s.focus();return null;}return me;}
+// --- sub-renderers (read from TRACKING) ---
+function assignInner(board,id){
+  const rec=TRACKING[akey(board,id)]||{};
+  if(rec.email) return `<span class="stg stg-Assigned" style="border:none">${esc(rec.name||rec.email)}</span> <button type="button" class="btn s unassign" style="padding:2px 8px">unassign</button>`;
+  if(!SALESPEOPLE.length) return `<span style="color:var(--mut);font-size:12px">salesperson list unavailable</span>`;
   const opts=SALESPEOPLE.map(p=>`<option value="${esc(p.email)}" data-name="${esc(p.name)}">${esc(p.name)}</option>`).join("");
-  return `<select class="asel" style="max-width:180px;padding:3px"><option value="">Assign to…</option>${opts}</select>`+
-    ` <button class="btn s abtn" style="padding:2px 8px" data-board="${esc(board)}" data-id="${esc(String(id))}" data-title="${esc((title||'').slice(0,140))}">Assign</button>`;
+  return `<select class="asel"><option value="">Assign to…</option>${opts}</select> <button type="button" class="btn s abtn" style="padding:2px 8px">Assign</button>`;
 }
-function assignBox(board,id,title){
+function stageSelHTML(board,id){
+  const stage=(TRACKING[akey(board,id)]||{}).stage||"New";
+  return `<select class="stage-sel stg ${stgCls(stage)}">${STAGES.map(s=>`<option${s===stage?" selected":""}>${esc(s)}</option>`).join("")}</select>`;
+}
+function cmtHTML(c){return `<div class="cmt"><div class="who"><b>${esc(c.by||"—")}</b> · ${esc(fmtTs(c.ts))}</div>${esc(c.text)}</div>`;}
+function chatterHTML(board,id){
+  const cs=(TRACKING[akey(board,id)]||{}).comments||[];
+  const list=cs.length?cs.map(cmtHTML).join(""):'<div class="cmt-empty">No notes yet. Add the first follow-up below.</div>';
+  return `<div class="cmt-list">${list}</div><div class="cmt-add"><textarea class="cmt-text" placeholder="Add a note / follow-up…"></textarea><button type="button" class="btn p cmt-post">Post</button></div>`;
+}
+function leadToolsInner(board,id){
+  const cs=(TRACKING[akey(board,id)]||{}).comments||[];
+  return `<div class="lt-row"><span class="lab">Owner</span><span class="assign-slot">${assignInner(board,id)}</span>`+
+    `<span class="lab">Stage</span>${stageSelHTML(board,id)}`+
+    `<button type="button" class="cmt-toggle">💬 Notes (${cs.length})</button></div>`+
+    `<div class="chatter hidden">${chatterHTML(board,id)}</div>`;
+}
+function leadTools(board,id,title){
   if(!board||id==null||id==="") return "";
-  return `<span class="assign-slot" data-akey="${esc(akey(board,id))}" style="display:inline-flex;align-items:center;gap:5px;margin-left:6px">${assignInner(board,id,title)}</span>`;
+  return `<div class="leadtools" data-akey="${esc(akey(board,id))}" data-board="${esc(board)}" data-id="${esc(String(id))}" data-title="${esc((title||'').slice(0,160))}">${leadToolsInner(board,id)}</div>`;
 }
-function refreshAssign(board,id,title){
+function refreshLead(board,id){
   const k=akey(board,id);
-  document.querySelectorAll(".assign-slot").forEach(sl=>{if(sl.dataset.akey===k) sl.innerHTML=assignInner(board,id,title);});
+  document.querySelectorAll(".leadtools").forEach(el=>{if(el.dataset.akey===k) el.innerHTML=leadToolsInner(board,id);});
+  if(typeof pipelineDraw==="function") pipelineDraw();
 }
-async function doAlloc(action,body){
-  const url=action==="allocate"?"/api/allocate":"/api/unallocate";
-  try{
-    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok){alert((j&&j.error)||"Request failed");return;}
-    const k=akey(body.board,body.lead_id);
-    if(action==="allocate") ALLOCATIONS[k]={name:body.name,email:body.email};
-    else delete ALLOCATIONS[k];
-    refreshAssign(body.board,body.lead_id,body.title);
-  }catch(e){alert("Network error: "+e);}
+async function apiPost(url,body){
+  const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error((j&&j.error)||("HTTP "+r.status));
+  return j;
 }
+async function doAssign(board,id,title,email,name){const me=requireMe();if(!me)return;
+  try{const j=await apiPost("/api/allocate",{board,lead_id:id,title,email,name,by:me.name});TRACKING[akey(board,id)]=j.record;refreshLead(board,id);}catch(e){alert(e.message);}}
+async function doUnassign(board,id){const me=requireMe();if(!me)return;
+  try{await apiPost("/api/unallocate",{board,lead_id:id});const k=akey(board,id);const r=TRACKING[k];if(r){r.name="";r.email="";if(r.stage==="Assigned")r.stage="New";if(r.stage==="New"&&!(r.comments||[]).length)delete TRACKING[k];}refreshLead(board,id);}catch(e){alert(e.message);}}
+async function doStage(board,id,title,stage){const me=requireMe();if(!me){refreshLead(board,id);return;}
+  try{const j=await apiPost("/api/stage",{board,lead_id:id,title,stage,by:me.name});TRACKING[akey(board,id)]=j.record;refreshLead(board,id);}catch(e){alert(e.message);refreshLead(board,id);}}
+async function doComment(board,id,title,text,ta){const me=requireMe();if(!me)return;
+  try{const j=await apiPost("/api/comment",{board,lead_id:id,title,text,by:me.name});
+    const k=akey(board,id);const rec=TRACKING[k]||(TRACKING[k]={board,lead_id:String(id),title,name:"",email:"",stage:"New",comments:[]});
+    rec.comments=rec.comments||[];rec.comments.push(j.comment);rec.updated=j.comment.ts;
+    if(ta)ta.value="";
+    document.querySelectorAll(".leadtools").forEach(el=>{if(el.dataset.akey!==k)return;
+      const lst=el.querySelector(".cmt-list");if(lst){const emp=lst.querySelector(".cmt-empty");if(emp)emp.remove();lst.insertAdjacentHTML("beforeend",cmtHTML(j.comment));}
+      const tg=el.querySelector(".cmt-toggle");if(tg)tg.textContent=`💬 Notes (${rec.comments.length})`;});
+    if(typeof pipelineDraw==="function") pipelineDraw();
+  }catch(e){alert(e.message);}}
+// --- delegated handlers (work on cards and pipeline rows alike) ---
 document.addEventListener("click",e=>{
+  const tog=e.target.closest(".cmt-toggle");
+  if(tog){const box=tog.closest(".leadtools");const ch=box&&box.querySelector(".chatter");if(ch)ch.classList.toggle("hidden");return;}
   const ab=e.target.closest(".abtn");
-  if(ab){const slot=ab.closest(".assign-slot"),sel=slot&&slot.querySelector(".asel");
-    if(!sel||!sel.value){alert("Pick a person first");return;}
+  if(ab){const box=ab.closest(".leadtools");const sel=box.querySelector(".asel");
+    if(!sel||!sel.value){alert("Pick a person to assign");return;}
     const name=sel.options[sel.selectedIndex].getAttribute("data-name")||"";
-    doAlloc("allocate",{board:ab.dataset.board,lead_id:ab.dataset.id,title:ab.dataset.title||"",email:sel.value,name});return;}
+    doAssign(box.dataset.board,box.dataset.id,box.dataset.title||"",sel.value,name);return;}
   const ub=e.target.closest(".unassign");
-  if(ub){doAlloc("unallocate",{board:ub.dataset.board,lead_id:ub.dataset.id});}
+  if(ub){const box=ub.closest(".leadtools");doUnassign(box.dataset.board,box.dataset.id);return;}
+  const post=e.target.closest(".cmt-post");
+  if(post){const box=post.closest(".leadtools");const ta=box.querySelector(".cmt-text");const txt=(ta.value||"").trim();
+    if(!txt){return;}doComment(box.dataset.board,box.dataset.id,box.dataset.title||"",txt,ta);return;}
+});
+document.addEventListener("change",e=>{
+  const ss=e.target.closest(".stage-sel");
+  if(ss){const box=ss.closest(".leadtools");doStage(box.dataset.board,box.dataset.id,box.dataset.title||"",ss.value);}
 });
 const S={D:"DECANT REFERENCED IN DECISION",A:"ACCOMMODATION SIGNAL IN DECISION",R:"OCCUPANCY-RISK SIGNAL",N:"NO DECANT SIGNAL FOUND",U:"DECISION TEXT NOT YET SCANNED"};
 const badge=s=>s===S.D?"b-decant":s===S.A?"b-accom":s===S.R?"b-risk":s===S.N?"b-none":"b-unscanned";
@@ -336,7 +449,7 @@ const GROUPS=[
 const HL=/(decant\w*|temporary\s+accommodation|alternative\s+accommodation|emergency\s+accommodation|re-?hous\w+|evacuat\w+|prohibition\s+notice|vacat\w+|waking\s+watch|hotels?\b|uninhabitable)/gi;
 const HLDATE=/(\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2}\b|£\s?[\d,]+(?:\.\d{2})?)/g;
 
-const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const esc=t=>String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 function hl(t){return esc(t).replace(HL,'<mark>$1</mark>').replace(HLDATE,'<mark class="d8">$1</mark>');}
 
 function counts(){
@@ -393,7 +506,7 @@ function infoHTML(c){
    <div class="k">Priority</div><div class="v ${pcls(c.priority.value)}">${esc(c.priority.value)}</div>
    <div class="k">Priority source</div><div class="v">${esc(c.priority.source)}</div>
   </div>${changed}
-  <div class="btns"><a class="btn p" href="${c.url}" target="_blank">${isUT?"View judgment ↗":"View on GOV.UK ↗"}</a>${isUT?"":att}${assignBox("decant",c.slug,c.title)}</div></div>`;
+  <div class="btns"><a class="btn p" href="${c.url}" target="_blank">${isUT?"View judgment ↗":"View on GOV.UK ↗"}</a>${isUT?"":att}</div>${leadTools("decant",c.slug,c.title)}</div>`;
 }
 
 function render(){
@@ -489,7 +602,7 @@ function acard(o){
     ${(o.evidence||[]).filter(Boolean).map(e=>`<div class="quote">${esc(e)}</div>`).join("")}
     ${(o.terms&&o.terms.length)?`<div class="termrow">${o.terms.map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div>`:""}
    </details>
-   <div class="btns"><a class="btn p" href="${esc(o.url)}" target="_blank">${o.urlLabel||"View source ↗"}</a>${o.extra||""}${assignBox(o.board,o.lead_id,o.title)}</div></div>`;
+   <div class="btns"><a class="btn p" href="${esc(o.url)}" target="_blank">${o.urlLabel||"View source ↗"}</a>${o.extra||""}</div>${leadTools(o.board,o.lead_id,o.title)}</div>`;
 }
 
 // ---- floods render ----
@@ -744,6 +857,84 @@ function topSignalsRender(){
   draw();
 }
 topSignalsRender();
+
+// ===== Pipeline management tab =====
+const BOARD_LABELS={decant:"Decant housing",floods:"Floods",tenders:"Govt tenders",infra:"UK infra",prospects:"Prospect",hq:"London move",uk:"UK move"};
+// Enumerate every trackable lead across boards (ids match the backend board map).
+function enumerateLeads(){
+  const out=[];
+  (cases||[]).forEach(c=>{const st=c.decant&&c.decant.status;if(st!==S.D&&st!==S.A)return;
+    out.push({board:"decant",id:c.slug,title:c.title,url:c.url});});
+  ((FLOODS&&FLOODS.leads)||[]).forEach(l=>out.push({board:"floods",id:l.id,title:l.area,url:"https://check-for-flooding.service.gov.uk/"}));
+  ((TENDERS&&TENDERS.leads)||[]).forEach(l=>out.push({board:"tenders",id:l.id,title:l.title,url:l.url}));
+  ((CORP_INFRA&&CORP_INFRA.leads)||[]).forEach(l=>out.push({board:"infra",id:l.id,title:l.title,url:l.url}));
+  ((PROSPECTS&&PROSPECTS.leads)||[]).forEach(l=>out.push({board:"prospects",id:l.id,title:(l.account+" — "+l.contract_title),url:l.url}));
+  ((HQMOVES&&HQMOVES.projects)||[]).forEach(x=>out.push({board:"hq",id:x.id,title:x.title,url:x.url}));
+  ((UKMOVES&&UKMOVES.projects)||[]).forEach(x=>out.push({board:"uk",id:x.id,title:x.title,url:x.url}));
+  return out;
+}
+function pipelineRows(){
+  const leads=enumerateLeads();
+  const seen=new Set(leads.map(l=>akey(l.board,l.id)));
+  // keep tracked leads that dropped out of the latest crawl (don't lose active work)
+  Object.keys(TRACKING).forEach(k=>{if(seen.has(k))return;const r=TRACKING[k];leads.push({board:r.board,id:r.lead_id,title:r.title||k,url:"#",absent:true});});
+  return leads.map(l=>{const rec=TRACKING[akey(l.board,l.id)]||null;
+    return {...l,stage:rec&&rec.stage?rec.stage:"New",owner:rec&&rec.email?(rec.name||rec.email):"",
+      upd:rec?(rec.updated||rec.stage_at||rec.allocated_at||""):"",nc:rec&&rec.comments?rec.comments.length:0,assigned:!!(rec&&rec.email)};});
+}
+function pipelineDraw(){
+  if(!document.getElementById("pl-tb"))return;
+  const rows=pipelineRows();
+  const total=rows.length,assigned=rows.filter(r=>r.assigned).length;
+  document.getElementById("pl-total").textContent=total;
+  document.getElementById("pl-assigned").textContent=assigned;
+  document.getElementById("pl-unassigned").textContent=total-assigned;
+  document.getElementById("pl-won").textContent=rows.filter(r=>r.stage==="Won").length;
+  document.getElementById("pl-active").textContent=rows.filter(r=>["Qualified","Contacted","Proposal","Negotiation"].includes(r.stage)).length;
+  const cnt={};STAGES.forEach(s=>cnt[s]=0);rows.forEach(r=>{cnt[r.stage]=(cnt[r.stage]||0)+1;});
+  document.getElementById("pl-stagetags").innerHTML=STAGES.map(s=>`<span class="tg"><span class="stg ${stgCls(s)}" style="border:none;padding:1px 7px">${esc(s)}</span><b>${cnt[s]}</b></span>`).join("");
+  const q=(document.getElementById("plq").value||"").toLowerCase();
+  const fst=document.getElementById("pl-fstage").value,fow=document.getElementById("pl-fowner").value,
+        fbd=document.getElementById("pl-fboard").value,fas=document.getElementById("pl-fassign").value;
+  const tb=document.getElementById("pl-tb");tb.innerHTML="";
+  rows.filter(r=>(!q||((r.title+" "+(BOARD_LABELS[r.board]||r.board)+" "+r.owner).toLowerCase().includes(q)))
+      &&(!fst||r.stage===fst)&&(!fow||r.owner===fow)&&(!fbd||r.board===fbd)
+      &&(!fas||(fas==="assigned"?r.assigned:!r.assigned)))
+    .sort((a,b)=>(b.upd||"").localeCompare(a.upd||"")||a.title.localeCompare(b.title))
+    .forEach(r=>{
+      const tr=document.createElement("tr");tr.className="prow";
+      tr.innerHTML=`<td><span class="chev">▶</span></td>`+
+        `<td><b>${esc(r.title.slice(0,90))}</b>${r.absent?' <span class="badge b-unscanned">not in latest crawl</span>':''}</td>`+
+        `<td>${esc(BOARD_LABELS[r.board]||r.board)}</td>`+
+        `<td>${r.owner?esc(r.owner):'<span style="color:var(--mut)">— unassigned</span>'}</td>`+
+        `<td><span class="stg ${stgCls(r.stage)}">${esc(r.stage)}</span></td>`+
+        `<td style="color:var(--mut);white-space:nowrap">${r.upd?esc(fmtTs(r.upd)):"—"}</td>`+
+        `<td>${r.nc?("💬 "+r.nc):'<span style="color:var(--mut)">0</span>'}</td>`;
+      const dt=document.createElement("tr");dt.className="pdetail";
+      dt.innerHTML=`<td colspan="7"><div style="padding:6px 10px 14px">`+
+        `<div class="sub" style="margin:2px 0 8px">${esc(BOARD_LABELS[r.board]||r.board)}${r.url&&r.url!=="#"?' · <a href="'+esc(r.url)+'" target="_blank">open source ↗</a>':""}</div>`+
+        leadTools(r.board,r.id,r.title)+`</div></td>`;
+      tr.onclick=ev=>{if(ev.target.closest(".leadtools"))return;dt.classList.toggle("open");tr.classList.toggle("open-row");};
+      tb.appendChild(tr);tb.appendChild(dt);
+    });
+}
+(function pipelineInit(){
+  const fst=document.getElementById("pl-fstage");if(!fst)return;
+  STAGES.forEach(s=>fst.add(new Option(s,s)));
+  const fbd=document.getElementById("pl-fboard");Object.keys(BOARD_LABELS).forEach(b=>fbd.add(new Option(BOARD_LABELS[b],b)));
+  const fow=document.getElementById("pl-fowner");const owners=new Set(SALESPEOPLE.map(p=>p.name));Object.values(TRACKING).forEach(r=>{if(r.name)owners.add(r.name);});[...owners].sort().forEach(o=>fow.add(new Option(o,o)));
+  ["plq","pl-fstage","pl-fowner","pl-fboard","pl-fassign"].forEach(id=>document.getElementById(id).addEventListener("input",pipelineDraw));
+  pipelineDraw();
+})();
+
+// ===== "You are" identity selector =====
+(function initMe(){
+  const sel=document.getElementById("me-sel");if(!sel)return;
+  SALESPEOPLE.forEach(p=>sel.add(new Option(p.name,p.email)));
+  function status(me){document.getElementById("me-status").innerHTML=me?('Acting as <b>'+esc(me.name)+'</b> — assignments, stage changes and notes are logged under your name.'):'Set who you are to assign leads, change stages and post comments.';}
+  const me=getMe();if(me&&me.email){sel.value=me.email;if(sel.value!==me.email){sel.add(new Option(me.name,me.email));sel.value=me.email;}status(me);}
+  sel.addEventListener("change",()=>{const email=sel.value;if(!email){setMe(null);status(null);return;}const name=sel.options[sel.selectedIndex].textContent;setMe({name,email});status({name,email});});
+})();
 </script>
 </body>
 </html>

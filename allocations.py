@@ -1,12 +1,14 @@
 """
-Lead allocation — assign a lead to a salesperson, and email them when that
-lead's data changes on a later crawl.
+Lead workflow — assign a lead to a salesperson, move it through pipeline stages,
+log time-stamped comments (a chatter feed), and email the assignee when the lead's
+underlying data changes on a later crawl.
 
 - Active salespersons (name -> email) come from the admin enquiry app API and are
   cached in Datastore ("salespersons").
-- Allocations are stored in Datastore ("allocations") keyed by "<board>::<lead_id>",
-  each carrying a content signature of the lead at assignment/last-notify time.
-- After every crawl, notify_updates() re-signatures each allocated lead and emails
+- One tracking record per interacted lead lives in Datastore ("allocations"), keyed
+  by "<board>::<lead_id>": assignee, pipeline stage, a comments list, and a content
+  signature of the lead at assignment / last-notify time.
+- After every crawl, notify_updates() re-signatures each assigned lead and emails
   the assignee if it changed.
 """
 import hashlib
@@ -19,6 +21,10 @@ import store
 
 SALESPERSONS_API = ("https://admin-enquiry-app-219724630519.us-central1.run.app"
                     "/admin/api_get_active_salespersons")
+
+# Pipeline stages, in order. "New" = surfaced but not worked (unassigned/untouched).
+STAGES = ["New", "Assigned", "Qualified", "Contacted", "Proposal",
+          "Negotiation", "Won", "Lost", "On hold"]
 
 # board -> (dataset name, list key inside the doc, id field on each lead)
 _BOARDS = {
@@ -85,29 +91,93 @@ def _signature(lead):
     return hashlib.sha256(json.dumps(slim, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def allocate(board, lead_id, title, name, email):
+def _get_or_create(allocs, board, lead_id, title):
     if board not in _BOARDS:
         raise ValueError("unknown board: %s" % board)
-    allocs = get_allocations()
     key = board + "::" + str(lead_id)
-    allocs[key] = {
-        "board": board, "lead_id": str(lead_id), "title": title or "",
-        "name": name or "", "email": email or "", "allocated_at": _now(),
-        "signature": _signature(_find_lead(board, lead_id)), "last_notified": "",
-    }
+    rec = allocs.get(key)
+    if not rec:
+        rec = {"board": board, "lead_id": str(lead_id), "title": title or "",
+               "name": "", "email": "", "stage": "New", "stage_by": "", "stage_at": "",
+               "allocated_at": "", "comments": [], "signature": "", "last_notified": "",
+               "updated": _now()}
+        allocs[key] = rec
+    if title and not rec.get("title"):
+        rec["title"] = title
+    return rec
+
+
+def allocate(board, lead_id, title, name, email, by=""):
+    allocs = get_allocations()
+    rec = _get_or_create(allocs, board, lead_id, title)
+    rec.update(name=name or "", email=email or "", allocated_at=_now(), updated=_now())
+    rec["signature"] = _signature(_find_lead(board, lead_id))
+    rec["last_notified"] = ""
+    if rec.get("stage") in (None, "", "New"):
+        rec["stage"] = "Assigned"
+        rec["stage_by"] = by or name or ""
+        rec["stage_at"] = _now()
     store.put_json("allocations", allocs)
-    return allocs[key]
+    return rec
 
 
 def unallocate(board, lead_id):
     allocs = get_allocations()
-    allocs.pop(board + "::" + str(lead_id), None)
+    key = board + "::" + str(lead_id)
+    rec = allocs.get(key)
+    if not rec:
+        return
+    rec.update(name="", email="", updated=_now())
+    if rec.get("stage") == "Assigned":
+        rec["stage"] = "New"
+    # Drop the record entirely if nothing meaningful is left to keep.
+    if rec.get("stage") == "New" and not rec.get("comments"):
+        allocs.pop(key, None)
     store.put_json("allocations", allocs)
 
 
+def set_stage(board, lead_id, title, stage, by=""):
+    if stage not in STAGES:
+        raise ValueError("unknown stage: %s" % stage)
+    allocs = get_allocations()
+    rec = _get_or_create(allocs, board, lead_id, title)
+    rec.update(stage=stage, stage_by=by or "", stage_at=_now(), updated=_now())
+    if rec.get("email") and not rec.get("signature"):
+        rec["signature"] = _signature(_find_lead(board, lead_id))
+    store.put_json("allocations", allocs)
+    return rec
+
+
+def add_comment(board, lead_id, title, text, by=""):
+    text = (text or "").strip()
+    if not text:
+        raise ValueError("empty comment")
+    allocs = get_allocations()
+    rec = _get_or_create(allocs, board, lead_id, title)
+    entry = {"ts": _now(), "by": by or "", "text": text[:4000]}
+    rec.setdefault("comments", []).append(entry)
+    rec["updated"] = _now()
+    store.put_json("allocations", allocs)
+    return entry
+
+
 def public_map():
-    """Compact map the dashboard uses: key -> {name, email}."""
-    return {k: {"name": a.get("name"), "email": a.get("email")} for k, a in get_allocations().items()}
+    """Compact map: key -> {name, email} (assignee only)."""
+    return {k: {"name": a.get("name"), "email": a.get("email")}
+            for k, a in get_allocations().items() if a.get("email")}
+
+
+def public_tracking():
+    """Full per-lead workflow records for the dashboard (no internal signature)."""
+    out = {}
+    for k, a in get_allocations().items():
+        out[k] = {"board": a.get("board"), "lead_id": a.get("lead_id"),
+                  "title": a.get("title", ""), "name": a.get("name", ""),
+                  "email": a.get("email", ""), "stage": a.get("stage", "New"),
+                  "stage_by": a.get("stage_by", ""), "stage_at": a.get("stage_at", ""),
+                  "allocated_at": a.get("allocated_at", ""), "updated": a.get("updated", ""),
+                  "comments": a.get("comments", [])}
+    return out
 
 
 # ---- update notifications (called at the end of each crawl) ----------------
@@ -118,6 +188,8 @@ def notify_updates():
         return {"checked": 0, "notified": 0}
     notified, changed = 0, False
     for a in allocs.values():
+        if not a.get("email"):
+            continue  # unassigned (stage/comments only) — nobody to notify
         lead = _find_lead(a["board"], a["lead_id"])
         if not lead:
             continue  # lead absent this run — keep allocation, no alert

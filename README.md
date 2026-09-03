@@ -125,8 +125,11 @@ accepts Cloud Scheduler's `X-CloudScheduler` header.
 | `GET /api/<board>.json` | `cases`, `floods`, `tenders`, `corp_infra`, `prospects`, `hq`, `ukmoves`, `roster`, `changelog` |
 | `GET /api/salespersons.json` | active salespersons for lead assignment (`?refresh=1` re-pulls from the enquiry app) |
 | `GET /api/allocations.json` | current lead → assignee map |
-| `POST /api/allocate` | assign a lead (`{board, lead_id, title, name, email}`) |
+| `GET /api/pipeline.json` | full workflow records (assignee, stage, comments) + the stage list |
+| `POST /api/allocate` | assign a lead (`{board, lead_id, title, name, email, by}`) |
 | `POST /api/unallocate` | remove an assignment (`{board, lead_id}`) |
+| `POST /api/stage` | move a lead to a stage (`{board, lead_id, title, stage, by}`) |
+| `POST /api/comment` | add a time-stamped note (`{board, lead_id, title, text, by}`) |
 | `POST /tasks/crawl` | run the crawl (Scheduler target; token- or OIDC-secured) |
 | `GET /healthz` | liveness |
 
@@ -139,3 +142,21 @@ signature for it; on any later crawl where that lead's data changes, the assigne
 gets an **update email** (SendGrid). Assignments live in the `allocations` Datastore
 document. The allocate/unallocate endpoints are unauthenticated by default — front
 the service with IAP or add your own auth if the dashboard is publicly reachable.
+
+## Pipeline, stages & comments
+
+The **Pipeline** tab is a sales-management view over every lead: assigned vs.
+unassigned counts, a count per stage, and a searchable/filterable table showing each
+lead's owner, stage, last activity and note count. Rows expand to the same workflow
+controls that appear on every lead card.
+
+Each lead moves through nine **stages** — New, Assigned, Qualified, Contacted,
+Proposal, Negotiation, Won, Lost, On hold (assigning a lead auto-advances New →
+Assigned). Every lead card and pipeline row also has a **chatter feed**: time-stamped
+comments (date + time attached automatically) for follow-ups and notes.
+
+Because the dashboard has no login, a **"You are"** selector (top of the page,
+remembered in the browser) attributes stage changes and comments to the acting
+salesperson. All workflow state (stage, comments, assignee) is stored per lead in the
+`allocations` Datastore document and injected into the page server-side, so it
+survives crawls and reloads.

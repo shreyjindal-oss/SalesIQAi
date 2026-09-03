@@ -123,8 +123,32 @@ _store.put_json("tenders", {"leads": [{"id": "t1", "title": "Temp accommodation"
 r = allocations.notify_updates()
 check(r["notified"] == 1 and _sent and _sent[-1][0] == "asha@thesqua.re", "assignee notified on lead change")
 check(allocations.notify_updates()["notified"] == 0, "signature updated → no repeat notify")
+
+print("Stages + comments")
+allocations.set_stage("tenders", "t1", "Temp accommodation", "Qualified", "Asha Rao")
+check(allocations.get_allocations()["tenders::t1"]["stage"] == "Qualified", "stage set")
+try:
+    allocations.set_stage("tenders", "t1", "", "Bogus", "x")
+    _bad = True
+except ValueError:
+    _bad = False
+check(not _bad, "invalid stage rejected")
+allocations.add_comment("tenders", "t1", "Temp accommodation", "Called the buyer, awaiting brief", "Asha Rao")
+_c = allocations.get_allocations()["tenders::t1"]["comments"]
+check(len(_c) == 1 and _c[0]["by"] == "Asha Rao" and _c[0]["ts"], "comment logged with author + timestamp")
+_pt = allocations.public_tracking()["tenders::t1"]
+check(_pt["stage"] == "Qualified" and _pt["comments"] and "signature" not in _pt, "public_tracking exposes stage+comments, hides signature")
+
+# comment on an UNASSIGNED lead creates a record but never emails
+_sent.clear()
+allocations.add_comment("floods", "F9", "Some area", "Noting for later", "Bea Lin")
+check("floods::F9" in allocations.get_allocations() and not allocations.get_allocations()["floods::F9"]["email"],
+      "comment creates untracked/unassigned record")
+check(allocations.notify_updates()["notified"] == 0 and not _sent, "unassigned records are never emailed")
+
 allocations.unallocate("tenders", "t1")
-check("tenders::t1" not in allocations.get_allocations(), "unallocate removes the record")
+check(allocations.get_allocations()["tenders::t1"]["stage"] == "Qualified", "unassign keeps a worked lead (has stage/comments)")
+check(not allocations.get_allocations()["tenders::t1"]["email"], "unassign clears the assignee")
 check(allocations._signature({"id": "x", "is_new": True}) == allocations._signature({"id": "x", "is_new": False}),
       "signature ignores volatile is_new flag")
 
