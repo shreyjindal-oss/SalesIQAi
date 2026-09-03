@@ -125,11 +125,12 @@ accepts Cloud Scheduler's `X-CloudScheduler` header.
 | `GET /api/<board>.json` | `cases`, `floods`, `tenders`, `corp_infra`, `prospects`, `hq`, `ukmoves`, `roster`, `changelog` |
 | `GET /api/salespersons.json` | active salespersons for lead assignment (`?refresh=1` re-pulls from the enquiry app) |
 | `GET /api/allocations.json` | current lead → assignee map |
-| `GET /api/pipeline.json` | full workflow records (assignee, stage, comments) + the stage list |
+| `GET /api/pipeline.json` | full workflow records (assignee, stage, follow-ups) + the stage list |
 | `POST /api/allocate` | assign a lead (`{board, lead_id, title, name, email, by}`) |
 | `POST /api/unallocate` | remove an assignment (`{board, lead_id}`) |
 | `POST /api/stage` | move a lead to a stage (`{board, lead_id, title, stage, by}`) |
-| `POST /api/comment` | add a time-stamped note (`{board, lead_id, title, text, by}`) |
+| `POST /api/followup` | add a follow-up line item (`{board, lead_id, title, text, due, by}`) |
+| `POST /api/followup/toggle` | mark a follow-up open/done (`{board, lead_id, item_id, done, by}`) |
 | `POST /tasks/crawl` | run the crawl (Scheduler target; token- or OIDC-secured) |
 | `GET /healthz` | liveness |
 

@@ -43,6 +43,22 @@ def _now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _new_id():
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+
+
+def _migrate(rec):
+    """Old records stored free-text 'comments'; promote them to follow-up items."""
+    if rec.get("followups") is None:
+        rec["followups"] = [
+            {"id": _new_id(), "ts": c.get("ts", ""), "by": c.get("by", ""),
+             "text": c.get("text", ""), "due": "", "done": False, "done_ts": ""}
+            for c in (rec.get("comments") or [])
+        ]
+        rec.pop("comments", None)
+    return rec
+
+
 # ---- salespersons ----------------------------------------------------------
 def fetch_salespersons():
     r = requests.get(SALESPERSONS_API, timeout=30, headers={"Accept": "application/json"})
@@ -99,9 +115,10 @@ def _get_or_create(allocs, board, lead_id, title):
     if not rec:
         rec = {"board": board, "lead_id": str(lead_id), "title": title or "",
                "name": "", "email": "", "stage": "New", "stage_by": "", "stage_at": "",
-               "allocated_at": "", "comments": [], "signature": "", "last_notified": "",
+               "allocated_at": "", "followups": [], "signature": "", "last_notified": "",
                "updated": _now()}
         allocs[key] = rec
+    _migrate(rec)
     if title and not rec.get("title"):
         rec["title"] = title
     return rec
@@ -131,7 +148,7 @@ def unallocate(board, lead_id):
     if rec.get("stage") == "Assigned":
         rec["stage"] = "New"
     # Drop the record entirely if nothing meaningful is left to keep.
-    if rec.get("stage") == "New" and not rec.get("comments"):
+    if rec.get("stage") == "New" and not rec.get("followups"):
         allocs.pop(key, None)
     store.put_json("allocations", allocs)
 
@@ -148,17 +165,41 @@ def set_stage(board, lead_id, title, stage, by=""):
     return rec
 
 
-def add_comment(board, lead_id, title, text, by=""):
+def add_followup(board, lead_id, title, text, by="", due=""):
     text = (text or "").strip()
     if not text:
-        raise ValueError("empty comment")
+        raise ValueError("empty follow-up")
     allocs = get_allocations()
     rec = _get_or_create(allocs, board, lead_id, title)
-    entry = {"ts": _now(), "by": by or "", "text": text[:4000]}
-    rec.setdefault("comments", []).append(entry)
+    item = {"id": _new_id(), "ts": _now(), "by": by or "", "text": text[:2000],
+            "due": (due or "")[:10], "done": False, "done_ts": ""}
+    rec.setdefault("followups", []).append(item)
     rec["updated"] = _now()
     store.put_json("allocations", allocs)
-    return entry
+    return item
+
+
+def toggle_followup(board, lead_id, item_id, done, by=""):
+    allocs = get_allocations()
+    key = board + "::" + str(lead_id)
+    rec = allocs.get(key)
+    if not rec:
+        raise ValueError("no such lead")
+    _migrate(rec)
+    found = None
+    for it in rec.get("followups", []):
+        if str(it.get("id")) == str(item_id):
+            it["done"] = bool(done)
+            it["done_ts"] = _now() if done else ""
+            if done and by:
+                it["done_by"] = by
+            found = it
+            break
+    if not found:
+        raise ValueError("no such follow-up")
+    rec["updated"] = _now()
+    store.put_json("allocations", allocs)
+    return found
 
 
 def public_map():
@@ -171,12 +212,13 @@ def public_tracking():
     """Full per-lead workflow records for the dashboard (no internal signature)."""
     out = {}
     for k, a in get_allocations().items():
+        _migrate(a)
         out[k] = {"board": a.get("board"), "lead_id": a.get("lead_id"),
                   "title": a.get("title", ""), "name": a.get("name", ""),
                   "email": a.get("email", ""), "stage": a.get("stage", "New"),
                   "stage_by": a.get("stage_by", ""), "stage_at": a.get("stage_at", ""),
                   "allocated_at": a.get("allocated_at", ""), "updated": a.get("updated", ""),
-                  "comments": a.get("comments", [])}
+                  "followups": a.get("followups", [])}
     return out
 
 

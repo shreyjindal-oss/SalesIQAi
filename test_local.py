@@ -133,21 +133,33 @@ try:
 except ValueError:
     _bad = False
 check(not _bad, "invalid stage rejected")
-allocations.add_comment("tenders", "t1", "Temp accommodation", "Called the buyer, awaiting brief", "Asha Rao")
-_c = allocations.get_allocations()["tenders::t1"]["comments"]
-check(len(_c) == 1 and _c[0]["by"] == "Asha Rao" and _c[0]["ts"], "comment logged with author + timestamp")
+_fu = allocations.add_followup("tenders", "t1", "Temp accommodation", "Call the buyer for the brief", "Asha Rao", "2026-09-10")
+_c = allocations.get_allocations()["tenders::t1"]["followups"]
+check(len(_c) == 1 and _c[0]["by"] == "Asha Rao" and _c[0]["ts"] and _c[0]["due"] == "2026-09-10" and _c[0]["done"] is False,
+      "follow-up logged with author, timestamp, due date, open status")
+allocations.toggle_followup("tenders", "t1", _fu["id"], True, "Asha Rao")
+check(allocations.get_allocations()["tenders::t1"]["followups"][0]["done"] is True and
+      allocations.get_allocations()["tenders::t1"]["followups"][0]["done_ts"], "follow-up marked done with timestamp")
 _pt = allocations.public_tracking()["tenders::t1"]
-check(_pt["stage"] == "Qualified" and _pt["comments"] and "signature" not in _pt, "public_tracking exposes stage+comments, hides signature")
+check(_pt["stage"] == "Qualified" and _pt["followups"] and "signature" not in _pt, "public_tracking exposes stage+followups, hides signature")
 
-# comment on an UNASSIGNED lead creates a record but never emails
+# a follow-up on an UNASSIGNED lead creates a record but never emails
 _sent.clear()
-allocations.add_comment("floods", "F9", "Some area", "Noting for later", "Bea Lin")
+allocations.add_followup("floods", "F9", "Some area", "Check severity next week", "Bea Lin")
 check("floods::F9" in allocations.get_allocations() and not allocations.get_allocations()["floods::F9"]["email"],
-      "comment creates untracked/unassigned record")
+      "follow-up creates untracked/unassigned record")
 check(allocations.notify_updates()["notified"] == 0 and not _sent, "unassigned records are never emailed")
 
+# legacy 'comments' records migrate to follow-ups on read
+allocations.store.put_json("allocations", {**allocations.get_allocations(),
+    "tenders::legacy": {"board": "tenders", "lead_id": "legacy", "title": "old", "name": "", "email": "",
+                        "stage": "New", "comments": [{"ts": "2026-01-01T00:00:00Z", "by": "X", "text": "old note"}]}})
+_mig = allocations.public_tracking()["tenders::legacy"]
+check(_mig["followups"] and _mig["followups"][0]["text"] == "old note" and _mig["followups"][0]["done"] is False,
+      "legacy comments migrate to follow-ups")
+
 allocations.unallocate("tenders", "t1")
-check(allocations.get_allocations()["tenders::t1"]["stage"] == "Qualified", "unassign keeps a worked lead (has stage/comments)")
+check(allocations.get_allocations()["tenders::t1"]["stage"] == "Qualified", "unassign keeps a worked lead (has stage/follow-ups)")
 check(not allocations.get_allocations()["tenders::t1"]["email"], "unassign clears the assignee")
 check(allocations._signature({"id": "x", "is_new": True}) == allocations._signature({"id": "x", "is_new": False}),
       "signature ignores volatile is_new flag")

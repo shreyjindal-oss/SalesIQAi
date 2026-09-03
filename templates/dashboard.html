@@ -128,12 +128,21 @@ details.ev .quote{color:#c8d2e4;font-size:12.5px;background:var(--panel3);border
 .cmt-toggle{cursor:pointer;background:var(--panel2);border:1px solid var(--line);color:var(--acc);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600}
 .chatter{margin-top:10px;background:var(--panel3);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 .chatter.hidden{display:none}
-.cmt{border-left:2px solid var(--acc);padding:4px 0 4px 10px;margin:6px 0;font-size:12.5px;color:#c8d2e4;white-space:pre-wrap}
-.cmt .who{color:var(--mut);font-size:11px;margin-bottom:2px}
-.cmt .who b{color:var(--text)}
-.cmt-empty{color:var(--mut);font-size:12px;margin:2px 0 8px}
-.cmt-add{display:flex;gap:8px;margin-top:8px}
-.cmt-add textarea{flex:1;min-height:38px;resize:vertical;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:13px/1.4 "Segoe UI",system-ui}
+.fu-head{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.fu{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.fu:last-child{border-bottom:none}
+.fu input[type=checkbox]{margin-top:2px;width:15px;height:15px;flex:0 0 auto;cursor:pointer;accent-color:var(--green)}
+.fu-body{flex:1;min-width:0}
+.fu-text{font-size:13px;color:#dbe3f0;white-space:pre-wrap;word-break:break-word}
+.fu.done .fu-text{color:var(--mut);text-decoration:line-through}
+.fu-meta{color:var(--mut);font-size:11px;margin-top:2px}
+.fu-meta b{color:var(--text)}
+.fu-due{display:inline-block;margin-left:6px;padding:0 7px;border-radius:10px;font-size:10.5px;border:1px solid #2f6d92;color:#6cc7ff;background:#132a3a}
+.fu-due.over{border-color:var(--red);color:var(--red);background:#3a1220}
+.fu-empty{color:var(--mut);font-size:12px;margin:2px 0 8px}
+.fu-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.fu-add input.fu-text-in{flex:1;min-width:200px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:13px/1.4 "Segoe UI",system-ui}
+.fu-add input.fu-due-in{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 8px;font-size:12px;color-scheme:dark}
 /* ---- pipeline table ---- */
 .pipe-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
 .pipe-tags .tg{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:4px 11px;font-size:12px;color:var(--mut)}
@@ -192,7 +201,7 @@ tr.pdetail>td{background:var(--panel3);border-top:none}
 </div>
 <table id="pl-tbl">
 <thead><tr>
-<th></th><th>Lead</th><th>Board</th><th>Owner</th><th>Stage</th><th>Last update</th><th>Notes</th>
+<th></th><th>Lead</th><th>Board</th><th>Owner</th><th>Stage</th><th>Last update</th><th>Follow-ups</th>
 </tr></thead>
 <tbody id="pl-tb"></tbody>
 </table>
@@ -370,18 +379,33 @@ function stageSelHTML(board,id){
   const stage=(TRACKING[akey(board,id)]||{}).stage||"New";
   return `<select class="stage-sel stg ${stgCls(stage)}">${STAGES.map(s=>`<option${s===stage?" selected":""}>${esc(s)}</option>`).join("")}</select>`;
 }
-function cmtHTML(c){return `<div class="cmt"><div class="who"><b>${esc(c.by||"—")}</b> · ${esc(fmtTs(c.ts))}</div>${esc(c.text)}</div>`;}
-function chatterHTML(board,id){
-  const cs=(TRACKING[akey(board,id)]||{}).comments||[];
-  const list=cs.length?cs.map(cmtHTML).join(""):'<div class="cmt-empty">No notes yet. Add the first follow-up below.</div>';
-  return `<div class="cmt-list">${list}</div><div class="cmt-add"><textarea class="cmt-text" placeholder="Add a note / follow-up…"></textarea><button type="button" class="btn p cmt-post">Post</button></div>`;
+function _todayStr(){return new Date().toISOString().slice(0,10);}
+function fuHTML(f){
+  const over=f.due && !f.done && f.due < _todayStr();
+  const due=f.due?`<span class="fu-due${over?" over":""}">${over?"overdue ":"due "}${esc(f.due)}</span>`:"";
+  const done=f.done?` · done ${esc(fmtTs(f.done_ts))}`:"";
+  return `<div class="fu${f.done?" done":""}" data-fid="${esc(f.id)}">`+
+    `<input type="checkbox" class="fu-check"${f.done?" checked":""}>`+
+    `<div class="fu-body"><div class="fu-text">${esc(f.text)}</div>`+
+    `<div class="fu-meta"><b>${esc(f.by||"—")}</b> · ${esc(fmtTs(f.ts))}${done}${due?" ":""}${due}</div></div></div>`;
+}
+function followupsHTML(board,id){
+  const fs=(TRACKING[akey(board,id)]||{}).followups||[];
+  const open=fs.filter(f=>!f.done).length;
+  const list=fs.length?fs.slice().sort((a,b)=>(a.done-b.done)||String(a.ts).localeCompare(String(b.ts))).map(fuHTML).join("")
+    :'<div class="fu-empty">No follow-ups yet. Add one below — each is its own line item.</div>';
+  return `<div class="fu-head">Follow-ups — ${open} open / ${fs.length} total</div><div class="fu-list">${list}</div>`+
+    `<div class="fu-add"><input class="fu-text-in" placeholder="New follow-up (e.g. Call buyer re: brief)…">`+
+    `<input class="fu-due-in" type="date" title="Optional due date">`+
+    `<button type="button" class="btn p fu-post">Add follow-up</button></div>`;
 }
 function leadToolsInner(board,id){
-  const cs=(TRACKING[akey(board,id)]||{}).comments||[];
+  const fs=(TRACKING[akey(board,id)]||{}).followups||[];
+  const open=fs.filter(f=>!f.done).length;
   return `<div class="lt-row"><span class="lab">Owner</span><span class="assign-slot">${assignInner(board,id)}</span>`+
     `<span class="lab">Stage</span>${stageSelHTML(board,id)}`+
-    `<button type="button" class="cmt-toggle">💬 Notes (${cs.length})</button></div>`+
-    `<div class="chatter hidden">${chatterHTML(board,id)}</div>`;
+    `<button type="button" class="cmt-toggle">✅ Follow-ups (${open} open${fs.length?" / "+fs.length:""})</button></div>`+
+    `<div class="chatter">${followupsHTML(board,id)}</div>`;
 }
 function leadTools(board,id,title){
   if(!board||id==null||id==="") return "";
@@ -404,16 +428,17 @@ async function doUnassign(board,id){const me=requireMe();if(!me)return;
   try{await apiPost("/api/unallocate",{board,lead_id:id});const k=akey(board,id);const r=TRACKING[k];if(r){r.name="";r.email="";if(r.stage==="Assigned")r.stage="New";if(r.stage==="New"&&!(r.comments||[]).length)delete TRACKING[k];}refreshLead(board,id);}catch(e){alert(e.message);}}
 async function doStage(board,id,title,stage){const me=requireMe();if(!me){refreshLead(board,id);return;}
   try{const j=await apiPost("/api/stage",{board,lead_id:id,title,stage,by:me.name});TRACKING[akey(board,id)]=j.record;refreshLead(board,id);}catch(e){alert(e.message);refreshLead(board,id);}}
-async function doComment(board,id,title,text,ta){const me=requireMe();if(!me)return;
-  try{const j=await apiPost("/api/comment",{board,lead_id:id,title,text,by:me.name});
-    const k=akey(board,id);const rec=TRACKING[k]||(TRACKING[k]={board,lead_id:String(id),title,name:"",email:"",stage:"New",comments:[]});
-    rec.comments=rec.comments||[];rec.comments.push(j.comment);rec.updated=j.comment.ts;
-    if(ta)ta.value="";
-    document.querySelectorAll(".leadtools").forEach(el=>{if(el.dataset.akey!==k)return;
-      const lst=el.querySelector(".cmt-list");if(lst){const emp=lst.querySelector(".cmt-empty");if(emp)emp.remove();lst.insertAdjacentHTML("beforeend",cmtHTML(j.comment));}
-      const tg=el.querySelector(".cmt-toggle");if(tg)tg.textContent=`💬 Notes (${rec.comments.length})`;});
-    if(typeof pipelineDraw==="function") pipelineDraw();
+function _ensureRec(board,id,title){const k=akey(board,id);return TRACKING[k]||(TRACKING[k]={board,lead_id:String(id),title:title||"",name:"",email:"",stage:"New",followups:[]});}
+async function doFollowup(board,id,title,text,due){const me=requireMe();if(!me)return;
+  try{const j=await apiPost("/api/followup",{board,lead_id:id,title,text,due,by:me.name});
+    const rec=_ensureRec(board,id,title);rec.followups=rec.followups||[];rec.followups.push(j.item);rec.updated=j.item.ts;
+    refreshLead(board,id);
   }catch(e){alert(e.message);}}
+async function doToggle(board,id,fid,done){const me=requireMe();if(!me){refreshLead(board,id);return;}
+  try{const j=await apiPost("/api/followup/toggle",{board,lead_id:id,item_id:fid,done,by:me.name});
+    const rec=TRACKING[akey(board,id)];if(rec){const it=(rec.followups||[]).find(f=>String(f.id)===String(fid));if(it){it.done=j.item.done;it.done_ts=j.item.done_ts;}}
+    refreshLead(board,id);
+  }catch(e){alert(e.message);refreshLead(board,id);}}
 // --- delegated handlers (work on cards and pipeline rows alike) ---
 document.addEventListener("click",e=>{
   const tog=e.target.closest(".cmt-toggle");
@@ -425,13 +450,22 @@ document.addEventListener("click",e=>{
     doAssign(box.dataset.board,box.dataset.id,box.dataset.title||"",sel.value,name);return;}
   const ub=e.target.closest(".unassign");
   if(ub){const box=ub.closest(".leadtools");doUnassign(box.dataset.board,box.dataset.id);return;}
-  const post=e.target.closest(".cmt-post");
-  if(post){const box=post.closest(".leadtools");const ta=box.querySelector(".cmt-text");const txt=(ta.value||"").trim();
-    if(!txt){return;}doComment(box.dataset.board,box.dataset.id,box.dataset.title||"",txt,ta);return;}
+  const post=e.target.closest(".fu-post");
+  if(post){const box=post.closest(".leadtools");const ti=box.querySelector(".fu-text-in");const di=box.querySelector(".fu-due-in");
+    const txt=(ti.value||"").trim();if(!txt){ti.focus();return;}
+    doFollowup(box.dataset.board,box.dataset.id,box.dataset.title||"",txt,(di&&di.value)||"");return;}
 });
 document.addEventListener("change",e=>{
   const ss=e.target.closest(".stage-sel");
-  if(ss){const box=ss.closest(".leadtools");doStage(box.dataset.board,box.dataset.id,box.dataset.title||"",ss.value);}
+  if(ss){const box=ss.closest(".leadtools");doStage(box.dataset.board,box.dataset.id,box.dataset.title||"",ss.value);return;}
+  const fc=e.target.closest(".fu-check");
+  if(fc){const box=fc.closest(".leadtools");const fu=fc.closest(".fu");doToggle(box.dataset.board,box.dataset.id,fu.dataset.fid,fc.checked);}
+});
+// let people press Enter in the follow-up text box to add it
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("fu-text-in")){e.preventDefault();
+    const box=e.target.closest(".leadtools");const di=box.querySelector(".fu-due-in");const txt=(e.target.value||"").trim();
+    if(txt)doFollowup(box.dataset.board,box.dataset.id,box.dataset.title||"",txt,(di&&di.value)||"");}
 });
 const S={D:"DECANT REFERENCED IN DECISION",A:"ACCOMMODATION SIGNAL IN DECISION",R:"OCCUPANCY-RISK SIGNAL",N:"NO DECANT SIGNAL FOUND",U:"DECISION TEXT NOT YET SCANNED"};
 const badge=s=>s===S.D?"b-decant":s===S.A?"b-accom":s===S.R?"b-risk":s===S.N?"b-none":"b-unscanned";
@@ -879,8 +913,9 @@ function pipelineRows(){
   // keep tracked leads that dropped out of the latest crawl (don't lose active work)
   Object.keys(TRACKING).forEach(k=>{if(seen.has(k))return;const r=TRACKING[k];leads.push({board:r.board,id:r.lead_id,title:r.title||k,url:"#",absent:true});});
   return leads.map(l=>{const rec=TRACKING[akey(l.board,l.id)]||null;
+    const fus=(rec&&rec.followups)||[];const fopen=fus.filter(f=>!f.done).length;
     return {...l,stage:rec&&rec.stage?rec.stage:"New",owner:rec&&rec.email?(rec.name||rec.email):"",
-      upd:rec?(rec.updated||rec.stage_at||rec.allocated_at||""):"",nc:rec&&rec.comments?rec.comments.length:0,assigned:!!(rec&&rec.email)};});
+      upd:rec?(rec.updated||rec.stage_at||rec.allocated_at||""):"",futotal:fus.length,fopen:fopen,assigned:!!(rec&&rec.email)};});
 }
 function pipelineDraw(){
   if(!document.getElementById("pl-tb"))return;
@@ -909,7 +944,7 @@ function pipelineDraw(){
         `<td>${r.owner?esc(r.owner):'<span style="color:var(--mut)">— unassigned</span>'}</td>`+
         `<td><span class="stg ${stgCls(r.stage)}">${esc(r.stage)}</span></td>`+
         `<td style="color:var(--mut);white-space:nowrap">${r.upd?esc(fmtTs(r.upd)):"—"}</td>`+
-        `<td>${r.nc?("💬 "+r.nc):'<span style="color:var(--mut)">0</span>'}</td>`;
+        `<td>${r.futotal?('<b style="color:'+(r.fopen?"var(--amber)":"var(--green)")+'">'+r.fopen+' open</b> / '+r.futotal):'<span style="color:var(--mut)">—</span>'}</td>`;
       const dt=document.createElement("tr");dt.className="pdetail";
       dt.innerHTML=`<td colspan="7"><div style="padding:6px 10px 14px">`+
         `<div class="sub" style="margin:2px 0 8px">${esc(BOARD_LABELS[r.board]||r.board)}${r.url&&r.url!=="#"?' · <a href="'+esc(r.url)+'" target="_blank">open source ↗</a>':""}</div>`+

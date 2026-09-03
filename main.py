@@ -142,19 +142,34 @@ def api_stage():
     return jsonify({"ok": True, "record": rec})
 
 
-@app.post("/api/comment")
-def api_comment():
+@app.post("/api/followup")
+def api_followup():
     b = request.get_json(silent=True) or request.form
     board, lead_id, text = b.get("board"), b.get("lead_id"), b.get("text")
-    title, by = b.get("title", ""), b.get("by", "")
+    title, by, due = b.get("title", ""), b.get("by", ""), b.get("due", "")
     if not (board and lead_id and (text or "").strip()):
         return jsonify({"error": "board, lead_id and text are required"}), 400
     try:
         with store.context():
-            entry = allocations.add_comment(board, lead_id, title, text, by)
+            item = allocations.add_followup(board, lead_id, title, text, by, due)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-    return jsonify({"ok": True, "comment": entry})
+    return jsonify({"ok": True, "item": item})
+
+
+@app.post("/api/followup/toggle")
+def api_followup_toggle():
+    b = request.get_json(silent=True) or request.form
+    board, lead_id, item_id = b.get("board"), b.get("lead_id"), b.get("item_id")
+    done, by = bool(b.get("done")), b.get("by", "")
+    if not (board and lead_id and item_id):
+        return jsonify({"error": "board, lead_id and item_id are required"}), 400
+    try:
+        with store.context():
+            item = allocations.toggle_followup(board, lead_id, item_id, done, by)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True, "item": item})
 
 
 @app.route("/tasks/crawl", methods=["POST", "GET"])
