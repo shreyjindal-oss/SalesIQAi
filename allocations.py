@@ -24,7 +24,7 @@ SALESPERSONS_API = ("https://admin-enquiry-app-219724630519.us-central1.run.app"
 
 # Pipeline stages, in order. "New" = surfaced but not worked (unassigned/untouched).
 STAGES = ["New", "Assigned", "Qualified", "Contacted", "Proposal",
-          "Negotiation", "Won", "Lost", "On hold"]
+          "Negotiation", "Won", "Lost", "On hold", "Disqualified"]
 
 # board -> (dataset name, list key inside the doc, id field on each lead)
 _BOARDS = {

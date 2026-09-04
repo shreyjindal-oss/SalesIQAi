@@ -125,6 +125,7 @@ details.ev .quote{color:#c8d2e4;font-size:12.5px;background:var(--panel3);border
 .stg-Won{background:#14231d;color:var(--green);border-color:#235c44}
 .stg-Lost{background:#3a1220;color:var(--red);border-color:var(--red)}
 .stg-Onhold{background:#222;color:var(--mut);border-color:var(--line)}
+.stg-Disqualified{background:#241a24;color:#d69ac0;border-color:#5a3a52;text-decoration:line-through}
 .cmt-toggle{cursor:pointer;background:var(--panel2);border:1px solid var(--line);color:var(--acc);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600}
 .chatter{margin-top:10px;background:var(--panel3);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 .chatter.hidden{display:none}
@@ -187,8 +188,10 @@ tr.pdetail>td{background:var(--panel3);border-top:none}
 <div class="card amber"><div class="n" id="pl-unassigned">0</div><div class="l">Unassigned</div></div>
 <div class="card green"><div class="n" id="pl-won">0</div><div class="l">Won</div></div>
 <div class="card red"><div class="n" id="pl-active">0</div><div class="l">Active (working)</div></div>
+<div class="card"><div class="n" id="pl-disq" style="color:#d69ac0">0</div><div class="l">Disqualified</div></div>
 </div>
 <div class="pipe-tags" id="pl-stagetags"></div>
+<div class="sub" style="margin:-6px 0 12px">Disqualified leads are hidden from the signal boards and excluded from the counts above. To review them, set the <b>stage filter</b> to "Disqualified". Set a lead's stage to <b>Disqualified</b> on any card to flag it as not a real prospect.</div>
 <div class="filters">
 <input id="plq" placeholder="Search company, project, owner…">
 <select id="pl-fstage"><option value="">All stages</option></select>
@@ -420,7 +423,9 @@ async function doAssign(board,id,title,email,name){const me=requireMe();if(!me)r
 async function doUnassign(board,id){const me=requireMe();if(!me)return;
   try{await apiPost("/api/unallocate",{board,lead_id:id});const k=akey(board,id);const r=TRACKING[k];if(r){r.name="";r.email="";if(r.stage==="Assigned")r.stage="New";if(r.stage==="New"&&!(r.comments||[]).length)delete TRACKING[k];}refreshLead(board,id);}catch(e){alert(e.message);}}
 async function doStage(board,id,title,stage){const me=requireMe();if(!me){refreshLead(board,id);return;}
-  try{const j=await apiPost("/api/stage",{board,lead_id:id,title,stage,by:me.name});TRACKING[akey(board,id)]=j.record;refreshLead(board,id);}catch(e){alert(e.message);refreshLead(board,id);}}
+  try{const j=await apiPost("/api/stage",{board,lead_id:id,title,stage,by:me.name});TRACKING[akey(board,id)]=j.record;refreshLead(board,id);
+    if(stage==="Disqualified") disqualifyLive(board,id);
+  }catch(e){alert(e.message);refreshLead(board,id);}}
 function _ensureRec(board,id,title){const k=akey(board,id);return TRACKING[k]||(TRACKING[k]={board,lead_id:String(id),title:title||"",name:"",email:"",stage:"New",followups:[]});}
 async function doFollowup(board,id,title,text){const me=requireMe();if(!me)return;
   try{const j=await apiPost("/api/followup",{board,lead_id:id,title,text,by:me.name});
@@ -463,6 +468,45 @@ document.addEventListener("keydown",e=>{
 const S={D:"DECANT REFERENCED IN DECISION",A:"ACCOMMODATION SIGNAL IN DECISION",R:"OCCUPANCY-RISK SIGNAL",N:"NO DECANT SIGNAL FOUND",U:"DECISION TEXT NOT YET SCANNED"};
 const badge=s=>s===S.D?"b-decant":s===S.A?"b-accom":s===S.R?"b-risk":s===S.N?"b-none":"b-unscanned";
 const pcls=p=>"prio-"+(p||"Unrated").replace(/[^A-Za-z]/g,"");
+
+// ===== Disqualified leads: hidden from the signal boards + counts, kept in Pipeline =====
+function isDisq(board,id){const r=TRACKING[akey(board,id)];return !!(r&&r.stage==="Disqualified");}
+// pristine copies BEFORE filtering, so the Pipeline tab can still list disqualified leads
+const RAWLEADS={
+  decant:(DATA&&DATA.cases)?DATA.cases.slice():[],
+  floods:(FLOODS&&FLOODS.leads)?FLOODS.leads.slice():[],
+  tenders:(TENDERS&&TENDERS.leads)?TENDERS.leads.slice():[],
+  infra:(CORP_INFRA&&CORP_INFRA.leads)?CORP_INFRA.leads.slice():[],
+  prospects:(PROSPECTS&&PROSPECTS.leads)?PROSPECTS.leads.slice():[],
+  hq:(HQMOVES&&HQMOVES.projects)?HQMOVES.projects.slice():[],
+  uk:(UKMOVES&&UKMOVES.projects)?UKMOVES.projects.slice():[],
+};
+(function(){
+  const f=(arr,b,k)=>arr.filter(x=>!isDisq(b,x[k]));
+  if(DATA&&DATA.cases){DATA.cases=f(DATA.cases,"decant","slug");DATA.case_count=DATA.cases.length;}
+  if(FLOODS&&FLOODS.leads){FLOODS.leads=f(FLOODS.leads,"floods","id");if(typeof FLOODS.count==="number")FLOODS.count=FLOODS.leads.length;}
+  if(TENDERS&&TENDERS.leads){TENDERS.leads=f(TENDERS.leads,"tenders","id");if(typeof TENDERS.count==="number")TENDERS.count=TENDERS.leads.length;}
+  if(CORP_INFRA&&CORP_INFRA.leads){CORP_INFRA.leads=f(CORP_INFRA.leads,"infra","id");if(typeof CORP_INFRA.count==="number")CORP_INFRA.count=CORP_INFRA.leads.length;}
+  if(PROSPECTS&&PROSPECTS.leads){PROSPECTS.leads=f(PROSPECTS.leads,"prospects","id");if(typeof PROSPECTS.count==="number")PROSPECTS.count=PROSPECTS.leads.length;}
+  if(HQMOVES&&HQMOVES.projects){HQMOVES.projects=f(HQMOVES.projects,"hq","id");}
+  if(UKMOVES&&UKMOVES.projects){UKMOVES.projects=f(UKMOVES.projects,"uk","id");}
+})();
+// board -> [dataset object, list key, id field, primary count element] for live disqualify
+const DISQ_MAP={floods:[FLOODS,"leads","id","f-total"],tenders:[TENDERS,"leads","id","t-total"],
+  infra:[CORP_INFRA,"leads","id","i-total"],prospects:[PROSPECTS,"leads","id","p-total"],
+  hq:[HQMOVES,"projects","id","hq-proj"],uk:[UKMOVES,"projects","id","uk-proj"],decant:[DATA,"cases","slug","c-total"]};
+function hideCardByAkey(k){document.querySelectorAll(".leadtools").forEach(el=>{if(el.dataset.akey!==k)return;
+  const card=el.closest(".fcard");if(card){card.style.display="none";return;}
+  const det=el.closest("tr.detail");if(det){det.style.display="none";if(det.previousElementSibling)det.previousElementSibling.style.display="none";}});}
+function disqualifyLive(board,id){
+  const m=DISQ_MAP[board];
+  if(m){const obj=m[0],key=m[1],idf=m[2],cntId=m[3];
+    if(obj&&obj[key]){const i=obj[key].findIndex(x=>String(x[idf])===String(id));if(i>=0)obj[key].splice(i,1);
+      if(board==="decant")DATA.case_count=DATA.cases.length; else if(typeof obj.count==="number")obj.count=obj[key].length;
+      const ce=document.getElementById(cntId);if(ce)ce.textContent=String(obj[key].length);}}
+  const se=document.getElementById("s-total");if(se){const n=parseInt(se.textContent,10);if(!isNaN(n))se.textContent=String(Math.max(0,n-1));}
+  hideCardByAkey(akey(board,id));
+}
 const cases=DATA.cases;
 const SRC_FTT="First-tier Tribunal (GOV.UK)", SRC_UT="Upper Tribunal (Lands Chamber)";
 const src=c=>c.source||SRC_FTT;
@@ -890,14 +934,15 @@ const BOARD_LABELS={decant:"Decant housing",floods:"Floods",tenders:"Govt tender
 // Enumerate every trackable lead across boards (ids match the backend board map).
 function enumerateLeads(){
   const out=[];
-  (cases||[]).forEach(c=>{const st=c.decant&&c.decant.status;if(st!==S.D&&st!==S.A)return;
+  // uses RAWLEADS (pre-disqualify) so the pipeline still lists disqualified leads
+  RAWLEADS.decant.forEach(c=>{const st=c.decant&&c.decant.status;if(st!==S.D&&st!==S.A)return;
     out.push({board:"decant",id:c.slug,title:c.title,url:c.url});});
-  ((FLOODS&&FLOODS.leads)||[]).forEach(l=>out.push({board:"floods",id:l.id,title:l.area,url:"https://check-for-flooding.service.gov.uk/"}));
-  ((TENDERS&&TENDERS.leads)||[]).forEach(l=>out.push({board:"tenders",id:l.id,title:l.title,url:l.url}));
-  ((CORP_INFRA&&CORP_INFRA.leads)||[]).forEach(l=>out.push({board:"infra",id:l.id,title:l.title,url:l.url}));
-  ((PROSPECTS&&PROSPECTS.leads)||[]).forEach(l=>out.push({board:"prospects",id:l.id,title:(l.account+" — "+l.contract_title),url:l.url}));
-  ((HQMOVES&&HQMOVES.projects)||[]).forEach(x=>out.push({board:"hq",id:x.id,title:x.title,url:x.url}));
-  ((UKMOVES&&UKMOVES.projects)||[]).forEach(x=>out.push({board:"uk",id:x.id,title:x.title,url:x.url}));
+  RAWLEADS.floods.forEach(l=>out.push({board:"floods",id:l.id,title:l.area,url:"https://check-for-flooding.service.gov.uk/"}));
+  RAWLEADS.tenders.forEach(l=>out.push({board:"tenders",id:l.id,title:l.title,url:l.url}));
+  RAWLEADS.infra.forEach(l=>out.push({board:"infra",id:l.id,title:l.title,url:l.url}));
+  RAWLEADS.prospects.forEach(l=>out.push({board:"prospects",id:l.id,title:(l.account+" — "+l.contract_title),url:l.url}));
+  RAWLEADS.hq.forEach(x=>out.push({board:"hq",id:x.id,title:x.title,url:x.url}));
+  RAWLEADS.uk.forEach(x=>out.push({board:"uk",id:x.id,title:x.title,url:x.url}));
   return out;
 }
 function pipelineRows(){
@@ -913,12 +958,15 @@ function pipelineRows(){
 function pipelineDraw(){
   if(!document.getElementById("pl-tb"))return;
   const rows=pipelineRows();
-  const total=rows.length,assigned=rows.filter(r=>r.assigned).length;
-  document.getElementById("pl-total").textContent=total;
+  const active=rows.filter(r=>r.stage!=="Disqualified");   // KPIs exclude disqualified
+  const disq=rows.length-active.length;
+  const assigned=active.filter(r=>r.assigned).length;
+  document.getElementById("pl-total").textContent=active.length;
   document.getElementById("pl-assigned").textContent=assigned;
-  document.getElementById("pl-unassigned").textContent=total-assigned;
-  document.getElementById("pl-won").textContent=rows.filter(r=>r.stage==="Won").length;
-  document.getElementById("pl-active").textContent=rows.filter(r=>["Qualified","Contacted","Proposal","Negotiation"].includes(r.stage)).length;
+  document.getElementById("pl-unassigned").textContent=active.length-assigned;
+  document.getElementById("pl-won").textContent=active.filter(r=>r.stage==="Won").length;
+  document.getElementById("pl-active").textContent=active.filter(r=>["Qualified","Contacted","Proposal","Negotiation"].includes(r.stage)).length;
+  const de=document.getElementById("pl-disq");if(de)de.textContent=disq;
   const cnt={};STAGES.forEach(s=>cnt[s]=0);rows.forEach(r=>{cnt[r.stage]=(cnt[r.stage]||0)+1;});
   document.getElementById("pl-stagetags").innerHTML=STAGES.map(s=>`<span class="tg"><span class="stg ${stgCls(s)}" style="border:none;padding:1px 7px">${esc(s)}</span><b>${cnt[s]}</b></span>`).join("");
   const q=(document.getElementById("plq").value||"").toLowerCase();
@@ -926,7 +974,9 @@ function pipelineDraw(){
         fbd=document.getElementById("pl-fboard").value,fas=document.getElementById("pl-fassign").value;
   const tb=document.getElementById("pl-tb");tb.innerHTML="";
   rows.filter(r=>(!q||((r.title+" "+(BOARD_LABELS[r.board]||r.board)+" "+r.owner).toLowerCase().includes(q)))
-      &&(!fst||r.stage===fst)&&(!fow||r.owner===fow)&&(!fbd||r.board===fbd)
+      // hide disqualified unless the stage filter is explicitly "Disqualified"
+      &&(fst==="Disqualified"?r.stage==="Disqualified":(r.stage!=="Disqualified"&&(!fst||r.stage===fst)))
+      &&(!fow||r.owner===fow)&&(!fbd||r.board===fbd)
       &&(!fas||(fas==="assigned"?r.assigned:!r.assigned)))
     .sort((a,b)=>(b.upd||"").localeCompare(a.upd||"")||a.title.localeCompare(b.title))
     .forEach(r=>{
