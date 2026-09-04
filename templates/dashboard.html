@@ -137,12 +137,9 @@ details.ev .quote{color:#c8d2e4;font-size:12.5px;background:var(--panel3);border
 .fu.done .fu-text{color:var(--mut);text-decoration:line-through}
 .fu-meta{color:var(--mut);font-size:11px;margin-top:2px}
 .fu-meta b{color:var(--text)}
-.fu-due{display:inline-block;margin-left:6px;padding:0 7px;border-radius:10px;font-size:10.5px;border:1px solid #2f6d92;color:#6cc7ff;background:#132a3a}
-.fu-due.over{border-color:var(--red);color:var(--red);background:#3a1220}
 .fu-empty{color:var(--mut);font-size:12px;margin:2px 0 8px}
 .fu-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .fu-add input.fu-text-in{flex:1;min-width:200px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:13px/1.4 "Segoe UI",system-ui}
-.fu-add input.fu-due-in{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 8px;font-size:12px;color-scheme:dark}
 /* ---- pipeline table ---- */
 .pipe-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
 .pipe-tags .tg{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:4px 11px;font-size:12px;color:var(--mut)}
@@ -379,15 +376,12 @@ function stageSelHTML(board,id){
   const stage=(TRACKING[akey(board,id)]||{}).stage||"New";
   return `<select class="stage-sel stg ${stgCls(stage)}">${STAGES.map(s=>`<option${s===stage?" selected":""}>${esc(s)}</option>`).join("")}</select>`;
 }
-function _todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function fuHTML(f){
-  const over=f.due && !f.done && f.due < _todayStr();
-  const due=f.due?`<span class="fu-due${over?" over":""}">${over?"overdue ":"due "}${esc(f.due)}</span>`:"";
   const done=f.done?` · done ${esc(fmtTs(f.done_ts))}`:"";
   return `<div class="fu${f.done?" done":""}" data-fid="${esc(f.id)}">`+
-    `<input type="checkbox" class="fu-check"${f.done?" checked":""}>`+
+    `<input type="checkbox" class="fu-check"${f.done?" checked":""} title="Mark done">`+
     `<div class="fu-body"><div class="fu-text">${esc(f.text)}</div>`+
-    `<div class="fu-meta"><b>${esc(f.by||"—")}</b> · ${esc(fmtTs(f.ts))}${done}${due?" ":""}${due}</div></div></div>`;
+    `<div class="fu-meta"><b>${esc(f.by||"—")}</b> · ${esc(fmtTs(f.ts))}${done}</div></div></div>`;
 }
 function followupsHTML(board,id){
   const fs=(TRACKING[akey(board,id)]||{}).followups||[];
@@ -395,8 +389,7 @@ function followupsHTML(board,id){
   const list=fs.length?fs.slice().sort((a,b)=>(a.done-b.done)||String(a.ts).localeCompare(String(b.ts))).map(fuHTML).join("")
     :'<div class="fu-empty">No follow-ups yet. Add one below — each is its own line item.</div>';
   return `<div class="fu-head">Follow-ups — ${open} open / ${fs.length} total</div><div class="fu-list">${list}</div>`+
-    `<div class="fu-add"><input class="fu-text-in" placeholder="New follow-up (e.g. Call buyer re: brief)…">`+
-    `<input class="fu-due-in" type="date" value="${_todayStr()}" title="Due date — defaults to today, change if needed">`+
+    `<div class="fu-add"><input class="fu-text-in" placeholder="Add a follow-up… (timestamp &amp; your name are added automatically)">`+
     `<button type="button" class="btn p fu-post">Add follow-up</button></div>`;
 }
 function leadToolsInner(board,id){
@@ -429,8 +422,8 @@ async function doUnassign(board,id){const me=requireMe();if(!me)return;
 async function doStage(board,id,title,stage){const me=requireMe();if(!me){refreshLead(board,id);return;}
   try{const j=await apiPost("/api/stage",{board,lead_id:id,title,stage,by:me.name});TRACKING[akey(board,id)]=j.record;refreshLead(board,id);}catch(e){alert(e.message);refreshLead(board,id);}}
 function _ensureRec(board,id,title){const k=akey(board,id);return TRACKING[k]||(TRACKING[k]={board,lead_id:String(id),title:title||"",name:"",email:"",stage:"New",followups:[]});}
-async function doFollowup(board,id,title,text,due){const me=requireMe();if(!me)return;
-  try{const j=await apiPost("/api/followup",{board,lead_id:id,title,text,due,by:me.name});
+async function doFollowup(board,id,title,text){const me=requireMe();if(!me)return;
+  try{const j=await apiPost("/api/followup",{board,lead_id:id,title,text,by:me.name});
     const rec=_ensureRec(board,id,title);rec.followups=rec.followups||[];rec.followups.push(j.item);rec.updated=j.item.ts;
     refreshLead(board,id);
   }catch(e){alert(e.message);}}
@@ -451,9 +444,9 @@ document.addEventListener("click",e=>{
   const ub=e.target.closest(".unassign");
   if(ub){const box=ub.closest(".leadtools");doUnassign(box.dataset.board,box.dataset.id);return;}
   const post=e.target.closest(".fu-post");
-  if(post){const box=post.closest(".leadtools");const ti=box.querySelector(".fu-text-in");const di=box.querySelector(".fu-due-in");
+  if(post){const box=post.closest(".leadtools");const ti=box.querySelector(".fu-text-in");
     const txt=(ti.value||"").trim();if(!txt){ti.focus();return;}
-    doFollowup(box.dataset.board,box.dataset.id,box.dataset.title||"",txt,(di&&di.value)||"");return;}
+    doFollowup(box.dataset.board,box.dataset.id,box.dataset.title||"",txt);return;}
 });
 document.addEventListener("change",e=>{
   const ss=e.target.closest(".stage-sel");
@@ -464,8 +457,8 @@ document.addEventListener("change",e=>{
 // let people press Enter in the follow-up text box to add it
 document.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("fu-text-in")){e.preventDefault();
-    const box=e.target.closest(".leadtools");const di=box.querySelector(".fu-due-in");const txt=(e.target.value||"").trim();
-    if(txt)doFollowup(box.dataset.board,box.dataset.id,box.dataset.title||"",txt,(di&&di.value)||"");}
+    const box=e.target.closest(".leadtools");const txt=(e.target.value||"").trim();
+    if(txt)doFollowup(box.dataset.board,box.dataset.id,box.dataset.title||"",txt);}
 });
 const S={D:"DECANT REFERENCED IN DECISION",A:"ACCOMMODATION SIGNAL IN DECISION",R:"OCCUPANCY-RISK SIGNAL",N:"NO DECANT SIGNAL FOUND",U:"DECISION TEXT NOT YET SCANNED"};
 const badge=s=>s===S.D?"b-decant":s===S.A?"b-accom":s===S.R?"b-risk":s===S.N?"b-none":"b-unscanned";
