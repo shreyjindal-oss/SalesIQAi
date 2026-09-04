@@ -379,7 +379,7 @@ function stageSelHTML(board,id){
   const stage=(TRACKING[akey(board,id)]||{}).stage||"New";
   return `<select class="stage-sel stg ${stgCls(stage)}">${STAGES.map(s=>`<option${s===stage?" selected":""}>${esc(s)}</option>`).join("")}</select>`;
 }
-function _todayStr(){return new Date().toISOString().slice(0,10);}
+function _todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function fuHTML(f){
   const over=f.due && !f.done && f.due < _todayStr();
   const due=f.due?`<span class="fu-due${over?" over":""}">${over?"overdue ":"due "}${esc(f.due)}</span>`:"";
@@ -396,7 +396,7 @@ function followupsHTML(board,id){
     :'<div class="fu-empty">No follow-ups yet. Add one below — each is its own line item.</div>';
   return `<div class="fu-head">Follow-ups — ${open} open / ${fs.length} total</div><div class="fu-list">${list}</div>`+
     `<div class="fu-add"><input class="fu-text-in" placeholder="New follow-up (e.g. Call buyer re: brief)…">`+
-    `<input class="fu-due-in" type="date" title="Optional due date">`+
+    `<input class="fu-due-in" type="date" value="${_todayStr()}" title="Due date — defaults to today, change if needed">`+
     `<button type="button" class="btn p fu-post">Add follow-up</button></div>`;
 }
 function leadToolsInner(board,id){
