@@ -214,6 +214,7 @@ tr.pdetail>td{background:var(--panel3);border-top:none}
 <div class="subnav">
 <button data-sub="decant-housing" class="active">Decant housing</button>
 <button data-sub="floods">Floods</button>
+<button data-sub="fires">Fires</button>
 <button data-sub="tenders">Govt Housing Tenders</button>
 </div>
 
@@ -267,6 +268,27 @@ Click any row for verbatim evidence quotes, decision links and the source PDF. N
 <h3 style="margin:22px 0 8px;font-size:15px">Market playbook — who to contact</h3>
 <div class="sub" style="margin-top:0">General flood-displacement buyers &amp; supply chain. These are market contacts to verify before outreach, <b>not</b> claims about any specific flood above.</div>
 <div class="contacts" id="f-contacts"></div>
+</div>
+
+<div class="subpane" data-sub="fires">
+<div class="cards">
+<div class="card green"><div class="n" id="fire-last" style="font-size:15px;line-height:1.4;padding-top:5px">—</div><div class="l">Last crawl</div></div>
+<div class="card acc"><div class="n" id="fire-total">0</div><div class="l">Live fire signals</div></div>
+<div class="card red"><div class="n" id="fire-new">0</div><div class="l">New this run</div></div>
+<div class="card amber"><div class="n" id="fire-manual">0</div><div class="l">Reported by team</div></div>
+</div>
+<div class="sub">Fire incidents that displace residents — an acute emergency-accommodation trigger (the Grenfell → Building Safety Act lineage). No real-time official feed exists, so this is a <b>news-watch</b> (verbatim, source-linked headlines to qualify — not confirmed demand) plus incidents your team logs by hand when a client calls. Sources: <a href="https://gnews.io/" target="_blank">GNews</a> search, UK.</div>
+<div class="firebox" id="fire-add" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0 16px">
+  <div style="font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">➕ Log an incident (e.g. a client just called)</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px">
+    <input id="fire-i-title" placeholder="Building / location (e.g. Neutron Towers, London E14)" style="flex:2;min-width:220px">
+    <input id="fire-i-hh" placeholder="Households (e.g. 50+)" style="flex:0 0 130px;min-width:110px">
+    <input id="fire-i-src" placeholder="Source / link (optional)" style="flex:1;min-width:160px">
+    <input id="fire-i-note" placeholder="Note (who called, what's needed…)" style="flex:2;min-width:220px">
+    <button type="button" class="btn p" id="fire-i-add">Add incident</button>
+  </div>
+</div>
+<div id="fire-list"></div>
 </div>
 
 <div class="subpane" data-sub="tenders">
@@ -354,6 +376,7 @@ const CORP_INFRA = __CORP_INFRA__;
 const PROSPECTS = __PROSPECTS__;
 const HQMOVES = __HQMOVES__;
 const UKMOVES = __UKMOVES__;
+const FIRES = __FIRES__;
 const CHANGELOG = __CHANGELOG__;
 const SALESPEOPLE = (typeof __SALESPEOPLE__!=="undefined"&&__SALESPEOPLE__)||[];
 let TRACKING = (typeof __TRACKING__!=="undefined"&&__TRACKING__)||{};
@@ -480,10 +503,12 @@ const RAWLEADS={
   prospects:(PROSPECTS&&PROSPECTS.leads)?PROSPECTS.leads.slice():[],
   hq:(HQMOVES&&HQMOVES.projects)?HQMOVES.projects.slice():[],
   uk:(UKMOVES&&UKMOVES.projects)?UKMOVES.projects.slice():[],
+  fires:(FIRES&&FIRES.items)?FIRES.items.slice():[],
 };
 (function(){
   const f=(arr,b,k)=>arr.filter(x=>!isDisq(b,x[k]));
   if(DATA&&DATA.cases){DATA.cases=f(DATA.cases,"decant","slug");DATA.case_count=DATA.cases.length;}
+  if(FIRES&&FIRES.items){FIRES.items=f(FIRES.items,"fires","id");if(typeof FIRES.count==="number")FIRES.count=FIRES.items.length;}
   if(FLOODS&&FLOODS.leads){FLOODS.leads=f(FLOODS.leads,"floods","id");if(typeof FLOODS.count==="number")FLOODS.count=FLOODS.leads.length;}
   if(TENDERS&&TENDERS.leads){TENDERS.leads=f(TENDERS.leads,"tenders","id");if(typeof TENDERS.count==="number")TENDERS.count=TENDERS.leads.length;}
   if(CORP_INFRA&&CORP_INFRA.leads){CORP_INFRA.leads=f(CORP_INFRA.leads,"infra","id");if(typeof CORP_INFRA.count==="number")CORP_INFRA.count=CORP_INFRA.leads.length;}
@@ -494,7 +519,8 @@ const RAWLEADS={
 // board -> [dataset object, list key, id field, primary count element] for live disqualify
 const DISQ_MAP={floods:[FLOODS,"leads","id","f-total"],tenders:[TENDERS,"leads","id","t-total"],
   infra:[CORP_INFRA,"leads","id","i-total"],prospects:[PROSPECTS,"leads","id","p-total"],
-  hq:[HQMOVES,"projects","id","hq-proj"],uk:[UKMOVES,"projects","id","uk-proj"],decant:[DATA,"cases","slug","c-total"]};
+  hq:[HQMOVES,"projects","id","hq-proj"],uk:[UKMOVES,"projects","id","uk-proj"],decant:[DATA,"cases","slug","c-total"],
+  fires:[FIRES,"items","id","fire-total"]};
 function hideCardByAkey(k){document.querySelectorAll(".leadtools").forEach(el=>{if(el.dataset.akey!==k)return;
   const card=el.closest(".fcard");if(card){card.style.display="none";return;}
   const det=el.closest("tr.detail");if(det){det.style.display="none";if(det.previousElementSibling)det.previousElementSibling.style.display="none";}});}
@@ -633,7 +659,7 @@ document.querySelectorAll(".pane").forEach(pane=>{
 (function(){
   const h=(location.hash||"").replace("#","");
   const map={
-    "decant-housing":["emergency","decant-housing"], floods:["emergency","floods"], tenders:["emergency","tenders"],
+    "decant-housing":["emergency","decant-housing"], floods:["emergency","floods"], fires:["emergency","fires"], tenders:["emergency","tenders"],
     hq:["corp","hq"], ukmoves:["corp","ukmoves"], infra:["corp","infra"], prospects:["corp","prospects"]
   };
   if(!map[h]) return;
@@ -707,6 +733,58 @@ function floodsRender(){
   cbox.innerHTML=Object.keys(cts).map(k=>`<div class="cbox"><h5>${esc(k)}</h5>${cts[k].map(n=>`<span class="chip">${esc(n)}</span>`).join("")}</div>`).join("");
 }
 floodsRender();
+
+// ---- fires render (displacement-fire news-watch + manually reported incidents) ----
+function firesRender(){
+  const f=FIRES, list=document.getElementById("fire-list"); if(!list) return;
+  const g=f&&f.generated_at?new Date(f.generated_at):null;
+  document.getElementById("fire-last").innerHTML=g?g.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+"<br>"+g.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—";
+  const items=(f&&f.items)||[];
+  document.getElementById("fire-total").textContent=items.length;
+  document.getElementById("fire-new").textContent=((f&&f.new)||[]).length;
+  document.getElementById("fire-manual").textContent=items.filter(it=>it.kind==="manual").length;
+  if(!items.length){list.innerHTML='<div class="soon"><b>No fire signals in the current window.</b><br>The news-watch scans UK fire coverage daily for displacement incidents — and you can log one above the moment a client calls.</div>';return;}
+  list.innerHTML=items.map(it=>{
+    if(it.kind==="manual"){
+      const hh=it.households?(" · "+it.households+" households"):"";
+      const why="Reported by "+(it.added_by||"the team")+(it.location?(" — "+it.location):"")+hh+". Residents displaced by fire need emergency / temporary accommodation immediately — a warm, time-critical opportunity.";
+      const ev=[it.note||"", ((it.location?("Location: "+it.location):"")+(it.households?(" · Households: "+it.households):"")+" · logged "+((it.added_at||"").slice(0,16).replace("T"," ")))].filter(Boolean);
+      return acard({cls:"s1", title:it.title, level:"MOBILISATION", isNew:it.is_new,
+        board:"fires", lead_id:it.id, badges:' <span class="badge b-doc">REPORTED</span>',
+        meta:"Logged by "+esc(it.added_by||"team")+(it.location?(" · "+esc(it.location)):""),
+        why, size:it.households?("~"+esc(it.households)+" households displaced (reported)"):"scale to confirm",
+        evidence:ev, terms:accomHits((it.title||"")+" "+(it.note||"")),
+        url:it.source_url||"#", urlLabel:it.source_url?"Open source ↗":"No link yet"});
+    }
+    const why="News signal — a fire that may displace residents. If homes are left unusable, an emergency / temporary accommodation window opens. Verbatim headline; qualify against the source before outreach.";
+    const ev=[(it.publisher||"news")+(it.pubDate?(" · "+it.pubDate.slice(0,10)):"")];
+    return acard({cls:"s3", title:it.title, level:"HINT", isNew:((f&&f.new)||[]).includes(it.id),
+      board:"fires", lead_id:it.id,
+      meta:esc(it.publisher||"news")+(it.pubDate?(" · "+esc(it.pubDate.slice(0,10))):""),
+      why, size:"scale unknown until qualified", evidence:ev, terms:accomHits(it.title),
+      url:it.link, urlLabel:"Read article ↗"});
+  }).join("");
+}
+firesRender();
+// manual "Add incident" — logs a fire the team hears about (e.g. a client call)
+(function(){
+  const btn=document.getElementById("fire-i-add"); if(!btn) return;
+  btn.addEventListener("click", async ()=>{
+    const me=requireMe(); if(!me) return;
+    const title=(document.getElementById("fire-i-title").value||"").trim();
+    if(!title){document.getElementById("fire-i-title").focus();return;}
+    const body={title, location:title, households:(document.getElementById("fire-i-hh").value||"").trim(),
+      source_url:(document.getElementById("fire-i-src").value||"").trim(),
+      note:(document.getElementById("fire-i-note").value||"").trim(), by:me.name};
+    try{
+      const j=await apiPost("/api/fire/add", body);
+      FIRES.items=FIRES.items||[]; FIRES.items.unshift(j.item);
+      RAWLEADS.fires.unshift(j.item);
+      ["fire-i-title","fire-i-hh","fire-i-src","fire-i-note"].forEach(id=>document.getElementById(id).value="");
+      firesRender(); if(typeof pipelineDraw==="function") pipelineDraw();
+    }catch(e){alert(e.message);}
+  });
+})();
 
 // ---- tenders render ----
 function tendersRender(){
@@ -879,6 +957,13 @@ function collectSignals(){
       why:"Active "+(l.severity||"flood alert")+" — homes at risk may be evacuated; emergency accommodation window.",
       size:sizeEstimate({severity:sev}), value:null, meta:esc((l.severity||"")+" · "+(l.county||l.region||"")),
       evidence:[l.message], terms:accomHits(l.message), url:"https://check-for-flooding.service.gov.uk/", urlLabel:"Check for flooding ↗"});});
+  ((FIRES&&FIRES.items)||[]).forEach(it=>{const man=it.kind==="manual";
+    out.push({board:"Fires", title:it.title, level:man?"MOBILISATION":"HINT",
+      why:man?("Reported fire — residents displaced"+(it.households?(" ("+it.households+" households)"):"")+"; emergency accommodation needed now."):"News: a fire that may displace residents — emergency accommodation window if homes are unusable. Qualify.",
+      size:man?(it.households?("~"+it.households+" households (reported)"):"scale to confirm"):"scale unknown until qualified", value:null,
+      meta:esc(man?("reported by "+(it.added_by||"team")):(it.publisher||"news")),
+      evidence:[man?(it.note||""):((it.publisher||"news")+(it.pubDate?(" · "+it.pubDate.slice(0,10)):""))].filter(Boolean),
+      terms:accomHits((it.title||"")+" "+(it.note||"")), url:(man?(it.source_url||"#"):it.link), urlLabel:man?"Open source ↗":"Read article ↗"});});
   ((TENDERS&&TENDERS.leads)||[]).forEach(l=>{const kws=(l.matched&&l.matched.keywords)||[];
     out.push({board:"Govt tenders", title:l.title, level:"EXPLICIT",
       why:"Public body is procuring accommodation-related services / works"+(kws.length?" (matched: "+kws.join(", ")+")":"")+".",
@@ -930,7 +1015,7 @@ function topSignalsRender(){
 topSignalsRender();
 
 // ===== Pipeline management tab =====
-const BOARD_LABELS={decant:"Decant housing",floods:"Floods",tenders:"Govt tenders",infra:"UK infra",prospects:"Prospect",hq:"London move",uk:"UK move"};
+const BOARD_LABELS={decant:"Decant housing",floods:"Floods",fires:"Fire",tenders:"Govt tenders",infra:"UK infra",prospects:"Prospect",hq:"London move",uk:"UK move"};
 // Enumerate every trackable lead across boards (ids match the backend board map).
 function enumerateLeads(){
   const out=[];
@@ -938,6 +1023,7 @@ function enumerateLeads(){
   RAWLEADS.decant.forEach(c=>{const st=c.decant&&c.decant.status;if(st!==S.D&&st!==S.A)return;
     out.push({board:"decant",id:c.slug,title:c.title,url:c.url});});
   RAWLEADS.floods.forEach(l=>out.push({board:"floods",id:l.id,title:l.area,url:"https://check-for-flooding.service.gov.uk/"}));
+  RAWLEADS.fires.forEach(it=>out.push({board:"fires",id:it.id,title:it.title,url:(it.kind==="manual"?(it.source_url||"#"):it.link)}));
   RAWLEADS.tenders.forEach(l=>out.push({board:"tenders",id:l.id,title:l.title,url:l.url}));
   RAWLEADS.infra.forEach(l=>out.push({board:"infra",id:l.id,title:l.title,url:l.url}));
   RAWLEADS.prospects.forEach(l=>out.push({board:"prospects",id:l.id,title:(l.account+" — "+l.contract_title),url:l.url}));

@@ -164,5 +164,19 @@ check(not allocations.get_allocations()["tenders::t1"]["email"], "unassign clear
 check(allocations._signature({"id": "x", "is_new": True}) == allocations._signature({"id": "x", "is_new": False}),
       "signature ignores volatile is_new flag")
 
+print("Fires")
+_mem.pop("fires", None)
+fdoc = crawler.crawl_fires("T")   # no GNews key in tests → news empty, no crash
+check(fdoc["count"] == 0 and fdoc["items"] == [], "crawl_fires runs with no key (empty)")
+fi = crawler.add_manual_fire("Neutron Towers", "London E14", "50+", "Client NAG called Sunday night", "https://ex/x", "Sabir Potts")
+check(fi["kind"] == "manual" and fi["id"].startswith("m_") and fi["added_by"] == "Sabir Potts", "manual fire incident logged with author")
+_fdoc = _store.get_json("fires")
+check(_fdoc["count"] == 1 and _fdoc["items"][0]["title"] == "Neutron Towers", "manual incident stored in fires dataset")
+crawler.crawl_fires("T2")   # a later crawl must preserve manual incidents
+check(_store.get_json("fires")["manual_count"] == 1, "crawl preserves manually-logged incidents")
+allocations.set_stage("fires", fi["id"], "Neutron Towers", "Qualified", "Sabir Potts")
+check(allocations.get_allocations()["fires::" + fi["id"]]["stage"] == "Qualified", "fire lead is trackable in the pipeline (stage set)")
+check(allocations._find_lead("fires", fi["id"]) is not None, "fire lead resolvable by allocations._find_lead")
+
 print(("\nALL PASSED" if not fails else "\n%d FAILURE(S)" % fails))
 sys.exit(1 if fails else 0)

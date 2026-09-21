@@ -30,6 +30,7 @@ STAGES = ["New", "Assigned", "Qualified", "Contacted", "Proposal",
 _BOARDS = {
     "decant": ("cases", "cases", "slug"),
     "floods": ("floods", "leads", "id"),
+    "fires": ("fires", "items", "id"),
     "tenders": ("tenders", "leads", "id"),
     "infra": ("corp_infra", "leads", "id"),
     "prospects": ("prospects", "leads", "id"),

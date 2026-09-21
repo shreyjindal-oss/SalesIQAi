@@ -29,6 +29,7 @@ _TEMPLATE_PATH = os.path.join(_HERE, "templates", "dashboard.html")
 _INJECT = {
     "__FLOODS__": "floods", "__TENDERS__": "tenders", "__CORP_INFRA__": "corp_infra",
     "__PROSPECTS__": "prospects", "__HQMOVES__": "hq", "__UKMOVES__": "ukmoves",
+    "__FIRES__": "fires",
 }
 
 _EMPTY_CASES = {"generated_at": "", "source": "#", "case_count": 0,
@@ -71,7 +72,7 @@ def dashboard():
 @app.get("/api/<name>.json")
 def api(name):
     allowed = {"cases", "floods", "tenders", "corp_infra", "prospects", "hq", "ukmoves",
-               "roster", "changelog"}
+               "fires", "roster", "changelog"}
     if name not in allowed:
         abort(404)
     with store.context():
@@ -169,6 +170,18 @@ def api_followup_toggle():
             item = allocations.toggle_followup(board, lead_id, item_id, done, by)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True, "item": item})
+
+
+@app.post("/api/fire/add")
+def api_fire_add():
+    b = request.get_json(silent=True) or request.form
+    title, location = b.get("title", ""), b.get("location", "")
+    if not ((title or "").strip() or (location or "").strip()):
+        return jsonify({"error": "a building/location or title is required"}), 400
+    with store.context():
+        item = crawler.add_manual_fire(title, location, b.get("households", ""),
+                                       b.get("note", ""), b.get("source_url", ""), b.get("by", ""))
     return jsonify({"ok": True, "item": item})
 
 

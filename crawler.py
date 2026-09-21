@@ -13,6 +13,7 @@ Sources (all free, no key except optional GNews for the news-watch):
   - GNews.io search (HQ/office-move news-watch)
 """
 import csv
+import hashlib
 import io
 import re
 import unicodedata
@@ -836,6 +837,63 @@ def _crawl_moves(dataset, run_ts, query, exclude_london, projects):
 
 
 # ============================================================================
+# FIRES — displacement-fire news-watch (GNews) + manually reported incidents
+# ============================================================================
+# Fires that displace residents are an acute emergency-accommodation trigger
+# (the Grenfell → Building Safety Act lineage). No real-time official feed
+# exists (London Fire Brigade open data is monthly), so the live signal is a
+# verbatim news-watch, plus incidents the team logs by hand when a client calls.
+GNEWS_FIRE_QUERY = ('(fire OR blaze) (flats OR "tower block" OR "high-rise" OR "high rise" '
+                    'OR apartments OR "care home" OR "student accommodation" OR estate OR "block of flats") '
+                    '(evacuated OR evacuation OR displaced OR rehoused OR "made homeless" '
+                    'OR "unable to return" OR relocated OR "temporary accommodation")')
+
+
+def _fire_id(link, title):
+    return "n_" + hashlib.sha1((str(link or "") + "|" + str(title or "")).encode("utf-8")).hexdigest()[:12]
+
+
+def crawl_fires(run_ts):
+    prev_raw = store.get_json("fires")
+    prev = prev_raw or {}
+    manual = [it for it in prev.get("items", []) if it.get("kind") == "manual"]
+    prev_news_ids = {it["id"] for it in prev.get("items", []) if it.get("kind") == "news"}
+    news, seen = [], set()
+    for n in _fetch_news(GNEWS_FIRE_QUERY, False, CONFIG["GNEWS_API_KEY"]):
+        nid = _fire_id(n.get("link"), n.get("title"))
+        if nid in seen:
+            continue
+        seen.add(nid)
+        news.append({"id": nid, "kind": "news", "title": n["title"],
+                     "publisher": n.get("publisher", ""), "publisher_url": n.get("publisher_url", ""),
+                     "link": n.get("link", ""), "pubDate": n.get("pubDate", ""),
+                     "is_new": nid not in prev_news_ids})
+    items = manual + news
+    out = {"generated_at": run_ts, "count": len(items), "news_count": len(news),
+           "manual_count": len(manual),
+           "new": ([n["id"] for n in news if n["is_new"]] if prev_raw else []),
+           "items": items}
+    store.put_json("fires", out)
+    return out
+
+
+def add_manual_fire(title, location, households, note, source_url, added_by):
+    run_ts = _now_ts()
+    doc = store.get_json("fires") or {"generated_at": run_ts, "items": [], "new": []}
+    fid = "m_" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+    item = {"id": fid, "kind": "manual",
+            "title": (title or location or "Reported fire incident")[:200],
+            "location": (location or "")[:200], "households": (str(households or ""))[:60],
+            "note": (note or "")[:2000], "source_url": (source_url or "")[:500],
+            "added_by": (added_by or "")[:120], "added_at": run_ts, "is_new": True}
+    doc.setdefault("items", []).insert(0, item)
+    doc["count"] = len(doc["items"])
+    doc["manual_count"] = sum(1 for it in doc["items"] if it.get("kind") == "manual")
+    store.put_json("fires", doc)
+    return item
+
+
+# ============================================================================
 # ORCHESTRATOR
 # ============================================================================
 def crawl(full=False):
@@ -900,6 +958,7 @@ def crawl(full=False):
     roster = crawl_roster(run_ts)
     floods = crawl_floods(run_ts)
     tenders = crawl_tenders(run_ts)
+    fires = crawl_fires(run_ts)
     hq = _crawl_moves("hq", run_ts, GNEWS_HQ_QUERY, False, tenders["london"])
     ukm = _crawl_moves("ukmoves", run_ts, GNEWS_UK_QUERY, True, tenders["uk"])
 
@@ -928,6 +987,7 @@ def crawl(full=False):
         "ut_error": ut.get("error"),
         "floods_count": floods.get("count", 0), "floods_new": len(floods.get("new", [])),
         "floods_error": floods.get("error"),
+        "fires_count": fires.get("count", 0), "fires_new": len(fires.get("new", [])),
         "tenders_count": tenders["tenders"].get("count", 0), "tenders_new": len(tenders["tenders"].get("new", [])),
         "tenders_error": tenders["tenders"].get("error"),
         "infra_count": tenders["infra"].get("count", 0),
