@@ -376,7 +376,7 @@ const CORP_INFRA = __CORP_INFRA__;
 const PROSPECTS = __PROSPECTS__;
 const HQMOVES = __HQMOVES__;
 const UKMOVES = __UKMOVES__;
-const FIRES = __FIRES__;
+let FIRES = __FIRES__ || {generated_at:"",count:0,news_count:0,manual_count:0,new:[],items:[]};
 const CHANGELOG = __CHANGELOG__;
 const SALESPEOPLE = (typeof __SALESPEOPLE__!=="undefined"&&__SALESPEOPLE__)||[];
 let TRACKING = (typeof __TRACKING__!=="undefined"&&__TRACKING__)||{};
