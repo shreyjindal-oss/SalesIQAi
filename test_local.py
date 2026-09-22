@@ -178,5 +178,13 @@ allocations.set_stage("fires", fi["id"], "Neutron Towers", "Qualified", "Sabir P
 check(allocations.get_allocations()["fires::" + fi["id"]]["stage"] == "Qualified", "fire lead is trackable in the pipeline (stage set)")
 check(allocations._find_lead("fires", fi["id"]) is not None, "fire lead resolvable by allocations._find_lead")
 
+# a manual incident is flagged "new" only for the first crawl after it was logged (for the daily digest)
+_store.put_json("fires", {"generated_at": "2026-09-22T06:00:00Z", "items": [
+    {"id": "m_x", "kind": "manual", "title": "X Tower", "added_at": "2026-09-22T07:00:00Z", "is_new": True}]})
+_d1 = crawler.crawl_fires("2026-09-22T08:00:00Z")
+check("m_x" in _d1["new"], "newly-logged incident is flagged new for the next digest")
+_d2 = crawler.crawl_fires("2026-09-22T09:00:00Z")
+check("m_x" not in _d2["new"], "incident is not re-flagged as new on later crawls")
+
 print(("\nALL PASSED" if not fails else "\n%d FAILURE(S)" % fails))
 sys.exit(1 if fails else 0)

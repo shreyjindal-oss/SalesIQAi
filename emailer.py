@@ -43,7 +43,7 @@ def _lv_tag(level):
             'font-size:11px">%s</span>' % (color, level))
 
 
-def _digest_items(data, alerts, floods, tenders, corp):
+def _digest_items(data, alerts, floods, tenders, corp, fires=None):
     items = []
 
     def by_id(arr):
@@ -85,13 +85,26 @@ def _digest_items(data, alerts, floods, tenders, corp):
         for x in [n for n in (src or {}).get("news", []) if n.get("is_new")]:
             items.append({"board": bn + " news", "title": x["title"], "level": "HINT",
                           "size": "news lead", "url": x["link"]})
+    fmap = by_id((fires or {}).get("items"))
+    for fid in (fires or {}).get("new", []):
+        it = fmap.get(fid)
+        if not it:
+            continue
+        if it.get("kind") == "manual":
+            items.append({"board": "Fire (reported)", "title": it.get("title", "fire incident"),
+                          "level": "MOBILISATION",
+                          "size": ("~" + it["households"] + " households displaced") if it.get("households") else "scale to confirm",
+                          "url": it.get("source_url") or CONFIG["DASHBOARD_URL"] or "#"})
+        else:
+            items.append({"board": "Fire (news)", "title": it.get("title", "fire"), "level": "HINT",
+                          "size": "scale unknown until qualified", "url": it.get("link", "#")})
     rank = {"EXPLICIT": 0, "MOBILISATION": 1, "HINT": 2}
     items.sort(key=lambda i: rank[i["level"]])
     return items
 
 
-def build_html(data, alerts, floods, tenders, corp):
-    items = _digest_items(data, alerts, floods, tenders, corp)
+def build_html(data, alerts, floods, tenders, corp, fires=None):
+    items = _digest_items(data, alerts, floods, tenders, corp, fires)
     n_exp = sum(1 for i in items if i["level"] == "EXPLICIT")
     n_mob = sum(1 for i in items if i["level"] == "MOBILISATION")
     n_hint = sum(1 for i in items if i["level"] == "HINT")
@@ -111,9 +124,10 @@ def build_html(data, alerts, floods, tenders, corp):
         % (_lv_tag(i["level"]), _esc(i["title"][:110]), _esc(i["board"]), _esc(i["size"]), i["url"])
         for i in items[:25])
     tail = ('<h3 style="margin:22px 0 6px">Portfolio</h3>'
-            '<p style="font-size:14px;color:#333">%d tribunal cases tracked · %d floods · '
+            '<p style="font-size:14px;color:#333">%d tribunal cases tracked · %d floods · %d fire signals · '
             '%d accommodation tenders · %d infra wins · %d prospect matches</p></div>'
-            % (data["case_count"], floods.get("count", 0), tenders["tenders"].get("count", 0),
+            % (data["case_count"], floods.get("count", 0), (fires or {}).get("count", 0),
+               tenders["tenders"].get("count", 0),
                tenders["infra"].get("count", 0), tenders["prospects"].get("count", 0)))
     return head + body + tail
 
@@ -178,17 +192,17 @@ def send_lead_update(email, name, board, lead):
         return "failed: " + str(e)
 
 
-def send_digest(data, alerts, floods, tenders, corp):
+def send_digest(data, alerts, floods, tenders, corp, fires=None):
     if not CONFIG["SENDGRID_API_KEY"] or not CONFIG["EMAIL_TO"]:
         return "skipped: no SendGrid key / recipient"
-    items = _digest_items(data, alerts, floods, tenders, corp)
+    items = _digest_items(data, alerts, floods, tenders, corp, fires)
     subject = ("Sales IQ: %d new accommodation signal(s)" % len(items) if items
                else "Sales IQ daily brief — %d cases tracked" % data["case_count"])
     payload = {
         "personalizations": [{"to": [{"email": e.strip()} for e in CONFIG["EMAIL_TO"].split(",") if e.strip()]}],
         "from": {"email": CONFIG["EMAIL_FROM"]},
         "subject": subject,
-        "content": [{"type": "text/html", "value": build_html(data, alerts, floods, tenders, corp)}],
+        "content": [{"type": "text/html", "value": build_html(data, alerts, floods, tenders, corp, fires)}],
     }
     try:
         res = requests.post(SEND_URL, json=payload, timeout=30,

@@ -856,7 +856,11 @@ def _fire_id(link, title):
 def crawl_fires(run_ts):
     prev_raw = store.get_json("fires")
     prev = prev_raw or {}
+    prev_ts = prev.get("generated_at") or ""
     manual = [it for it in prev.get("items", []) if it.get("kind") == "manual"]
+    # a manually-logged incident is "new" only for the first crawl after it was added
+    for it in manual:
+        it["is_new"] = bool(prev_raw) and (it.get("added_at", "") > prev_ts)
     prev_news_ids = {it["id"] for it in prev.get("items", []) if it.get("kind") == "news"}
     news, seen = [], set()
     for n in _fetch_news(GNEWS_FIRE_QUERY, False, CONFIG["GNEWS_API_KEY"]):
@@ -869,10 +873,10 @@ def crawl_fires(run_ts):
                      "link": n.get("link", ""), "pubDate": n.get("pubDate", ""),
                      "is_new": nid not in prev_news_ids})
     items = manual + news
+    new_ids = ([n["id"] for n in news if n["is_new"]] +
+               [m["id"] for m in manual if m.get("is_new")]) if prev_raw else []
     out = {"generated_at": run_ts, "count": len(items), "news_count": len(news),
-           "manual_count": len(manual),
-           "new": ([n["id"] for n in news if n["is_new"]] if prev_raw else []),
-           "items": items}
+           "manual_count": len(manual), "new": new_ids, "items": items}
     store.put_json("fires", out)
     return out
 
@@ -967,11 +971,12 @@ def crawl(full=False):
                    + hq["projects_new"] + hq["news_new"] + ukm["projects_new"] + ukm["news_new"])
     has_alerts = (len(alerts["newCases"]) or len(alerts["newSignals"]) or len(alerts["updated"])
                   or len(floods.get("new", [])) + len(floods.get("escalated", []))
-                  or len(tenders["tenders"].get("new", [])) or corp_alerts)
+                  or len(tenders["tenders"].get("new", [])) or corp_alerts
+                  or len(fires.get("new", [])))
     if CONFIG["SENDGRID_API_KEY"] and not is_baseline and (CONFIG["EMAIL_MODE"] == "always" or has_alerts):
         import emailer
         email_result = emailer.send_digest(data, alerts, floods, tenders,
-                                            {"hq": hq, "uk": ukm})
+                                            {"hq": hq, "uk": ukm}, fires)
 
     # Refresh the active salespersons list and notify assignees of changed leads.
     try:
